@@ -1,17 +1,17 @@
 {
-  "name": "decompiled-blog",
+  "name": "decompiled",
   "type": "module",
   "version": "0.0.1",
-  "engines": {
-    "node": ">=22.12.0"
-  },
   "scripts": {
     "dev": "astro dev",
+    "start": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro"
+    "preview": "astro preview"
   },
   "dependencies": {
-    "astro": "^6.1.1"
+    "@astrojs/mdx": "^5.0.3",
+    "astro": "^6.1.1",
+    "rehype-katex": "^7.0.0",
+    "remark-math": "^6.0.0"
   }
 }

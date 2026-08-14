@@ -1,0 +1,79 @@
+---
+title: "Breaking down the Linux scheduler: CFS"
+description: "A walkthrough of the Completely Fair Scheduler — how Linux decides which process runs next, and why."
+date: 2025-01-15
+tags: ["linux", "systems", "kernel"]
+---
+
+import Callout from '../../../../components/Callout.astro';
+
+
+Regular markdown still works fine here.
+
+
+The Linux kernel scheduler is one of those pieces of code that most people use every day without thinking about it. Every time you switch between your terminal and your browser, it's been invoked thousands of times. Let's take it apart.
+
+## What problem is the scheduler solving?
+
+At its core, the scheduler answers one question: **given a set of runnable processes, which one should the CPU execute next?**
+
+The naive answer — round robin, give everyone equal time slices — falls apart quickly. A video player needs to run often but briefly to stay smooth. A compiler wants long uninterrupted bursts. A background sync daemon can wait.
+
+## Enter CFS: Completely Fair Scheduler
+
+Introduced in Linux 2.6.23 (2007), CFS replaced the older O(1) scheduler. The central idea is elegant: instead of tracking time slices, track how much CPU time each process has *actually received* and always run the one that has received the least.
+
+This accumulated time is stored as `vruntime` — "virtual runtime" — on each task struct:
+
+```c
+struct sched_entity {
+    struct load_weight   load;
+    struct rb_node       run_node;
+    u64                  vruntime;
+    // ...
+};
+```
+
+## The red-black tree
+
+CFS stores all runnable tasks in a **red-black tree**, keyed by `vruntime`. The leftmost node — the task with the smallest vruntime — is always the next to run.
+
+This gives $O(\log n)$ insertion and removal, and $O(1)$ selection of the next task (the leftmost node is cached).
+
+The key invariant:
+
+$$
+\text{vruntime}_{\text{new}} = \text{vruntime}_{\text{old}} + \Delta t \cdot \frac{\text{NICE\_0\_LOAD}}{\text{load\_weight}}
+$$
+
+Where `load_weight` encodes the process's nice value — nicer processes accumulate vruntime faster, so they get the CPU less often.
+
+## A worked example
+
+Say we have three processes with equal weight. After 30ms of real time:
+
+| Process | CPU time received | vruntime |
+|---------|------------------|----------|
+| A       | 15ms             | 15ms     |
+| B       | 10ms             | 10ms     |
+| C       | 5ms              | 5ms      |
+
+CFS picks **C** next — it's been least served. After C runs for 5ms, all three have equal vruntime and the scheduler cycles fairly between them.
+
+## Where to look in the source
+
+The core logic lives in `kernel/sched/fair.c` — around 13,000 lines. Key functions:
+
+- `update_curr()` — updates vruntime of the currently running task
+- `enqueue_entity()` — adds a task to the red-black tree
+- `pick_next_entity()` — selects the next task to run
+
+Start at `pick_next_task_fair()` and trace outward.
+
+## What CFS doesn't handle
+
+CFS is the default scheduler but not the only one. Real-time tasks use `SCHED_FIFO` or `SCHED_RR` and preempt CFS tasks entirely. This is why audio software often requests real-time priority — it needs guarantees CFS can't give.
+
+---
+
+That's the skeleton. Next time: how CFS handles multicore — the load balancer and what "CPU affinity" actually means at the kernel level.

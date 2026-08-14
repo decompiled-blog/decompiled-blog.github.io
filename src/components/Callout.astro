@@ -1,0 +1,67 @@
+---
+const { type = 'info', title } = Astro.props;
+
+const config = {
+  info:       { icon: 'ℹ', label: 'Info',       color: '#00c8ff' },
+  warning:    { icon: '⚠', label: 'Warning',    color: '#f0a500' },
+  tip:        { icon: '✦', label: 'Tip',         color: '#00d084' },
+  definition: { icon: '∂', label: 'Definition',  color: '#a78bfa' },
+  proof:      { icon: '∴', label: 'Proof',       color: '#f472b6' },
+};
+
+const { icon, label, color } = config[type] ?? config.info;
+---
+
+<div class="callout" data-type={type} style={`--callout-color: ${color}`}>
+  <div class="callout__header">
+    <span class="callout__icon">{icon}</span>
+    <span class="callout__title">{title ?? label}</span>
+  </div>
+  <div class="callout__body">
+    <slot />
+  </div>
+</div>
+
+<style>
+.callout {
+  border-left: 2px solid var(--callout-color);
+  background: color-mix(in srgb, var(--callout-color) 6%, var(--bg2));
+  border-radius: 0 4px 4px 0;
+  margin: 1.75rem 0;
+  overflow: hidden;
+}
+
+.callout__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  background: color-mix(in srgb, var(--callout-color) 10%, var(--bg3));
+  border-bottom: 1px solid color-mix(in srgb, var(--callout-color) 15%, transparent);
+}
+
+.callout__icon {
+  font-size: 0.9rem;
+  color: var(--callout-color);
+  line-height: 1;
+}
+
+.callout__title {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--callout-color);
+}
+
+.callout__body {
+  padding: 1rem 1.25rem;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.callout__body :global(p:last-child) { margin-bottom: 0; }
+.callout__body :global(p) { margin-bottom: 0.75rem; }
+.callout__body :global(.katex-display) { margin: 1rem 0; }
+</style>

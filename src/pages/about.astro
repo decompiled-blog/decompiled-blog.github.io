@@ -1,0 +1,504 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="About" description="What Decompiled is, what it covers, and how it's built.">
+  <div class="about-page">
+
+    <!-- Hero -->
+    <section class="about-hero">
+      <canvas id="aboutCanvas" class="about-canvas"></canvas>
+      <div class="about-hero__content">
+        <p class="about-hero__tag">// about</p>
+        <h1 class="about-hero__title">No black boxes.</h1>
+        <p class="about-hero__sub">
+          Decompiled is a technical blog about taking opaque things apart
+          and understanding what they actually do.
+        </p>
+      </div>
+    </section>
+
+    <!-- Main content -->
+    <div class="about-body container--wide">
+
+      <!-- What this is -->
+      <div class="about-grid">
+        <div class="about-main">
+
+          <div class="about-block reveal">
+            <div class="about-block__label">// the idea</div>
+            <p class="about-block__text">
+              The name comes from decompiling — taking something compiled and opaque,
+              working backwards until you understand what it's actually doing.
+              That's the goal of every piece on this site.
+            </p>
+            <p class="about-block__text">
+              Most technical writing either stays too shallow or assumes too much.
+              Decompiled tries to go all the way down — to the source, to the paper,
+              to the actual implementation — and come back with something that genuinely
+              explains how a thing works, not just what it does.
+            </p>
+          </div>
+
+          <div class="about-block reveal">
+            <div class="about-block__label">// what gets covered</div>
+            <div class="coverage-grid">
+              {[
+                { cat: 'compilers',           color: '#00c8ff', desc: 'Lexers, parsers, IRs, optimisation passes, backends. LLVM internals. The Dragon Book made real.' },
+                { cat: 'operating systems',   color: '#00d084', desc: 'The Linux kernel. Schedulers, memory management, syscalls, filesystems. How the machine actually runs.' },
+                { cat: 'distributed systems', color: '#c792ea', desc: 'Consensus, replication, consistency. The papers behind the systems — GFS, Dynamo, Raft, Spanner.' },
+                { cat: 'networking',          color: '#f0a500', desc: 'TCP/IP internals, the Linux network stack, protocols from the ground up.' },
+                { cat: 'machine learning',    color: '#ff5370', desc: 'The maths and implementation behind the papers. Transformers, training dynamics, systems for ML.' },
+                { cat: 'algorithms',          color: '#82aaff', desc: 'Data structures and algorithms in the context of real codebases, not interview prep.' },
+              ].map(item => (
+                <div class="coverage-item" style={`--item-color: ${item.color}`}>
+                  <div class="coverage-item__dot"></div>
+                  <div>
+                    <div class="coverage-item__cat">{item.cat}</div>
+                    <div class="coverage-item__desc">{item.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div class="about-block reveal">
+            <div class="about-block__label">// two formats</div>
+            <div class="formats-grid">
+              <div class="format-card">
+                <div class="format-card__name" style="color:#00c8ff">source/</div>
+                <div class="format-card__desc">
+                  Long-form deep dives. Codebase walkthroughs, paper teardowns,
+                  concept explanations from first principles.
+                  These take weeks to write.
+                </div>
+              </div>
+              <div class="format-card">
+                <div class="format-card__name" style="color:#00d084">notes/</div>
+                <div class="format-card__desc">
+                  Shorter observations. Things noticed while reading,
+                  interesting invariants, half-formed ideas that aren't
+                  ready for a full post yet.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="about-block reveal">
+            <div class="about-block__label">// philosophy</div>
+            <div class="philosophy-list">
+              {[
+                ['Read the source', 'Every claim is grounded in actual code or a primary paper. Not documentation, not blog posts about blog posts.'],
+                ['Explain the why', 'Not just what a thing does, but why it was designed that way — what problem it solves, what constraints shaped it.'],
+                ['Go all the way down', 'No hand-waving. If something is left unexplained, it\'s a bug in the post, not a deliberate choice.'],
+              ].map(([title, desc]) => (
+                <div class="philosophy-item">
+                  <div class="philosophy-item__title">{title}</div>
+                  <div class="philosophy-item__desc">{desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Sidebar -->
+        <aside class="about-sidebar">
+
+          <div class="sidebar-card reveal">
+            <div class="sidebar-card__label">Status</div>
+            <div class="sidebar-card__value">
+              <span class="status-dot"></span>
+              <span style="color:var(--accent)">Active</span>
+            </div>
+          </div>
+
+          <div class="sidebar-card reveal">
+            <div class="sidebar-card__label">Built with</div>
+            <div class="tech-list">
+              {[
+                ['Astro', 'Static site framework'],
+                ['MDX', 'Content with components'],
+                ['KaTeX', 'LaTeX math rendering'],
+                ['Shiki', 'Syntax highlighting'],
+                ['GitHub Pages', 'Hosting'],
+                ['GitHub Actions', 'Deployment'],
+              ].map(([name, desc]) => (
+                <div class="tech-item">
+                  <span class="tech-item__name">{name}</span>
+                  <span class="tech-item__desc">{desc}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div class="sidebar-card reveal">
+            <div class="sidebar-card__label">Typography</div>
+            <div class="font-display">
+              <div class="font-display__item">
+                <div class="font-display__sample font-display__sample--mono">Aa</div>
+                <div class="font-display__meta">
+                  <div class="font-display__name">Space Mono</div>
+                  <div class="font-display__role">Headings · Code</div>
+                </div>
+              </div>
+              <div class="font-display__item">
+                <div class="font-display__sample font-display__sample--body">Aa</div>
+                <div class="font-display__meta">
+                  <div class="font-display__name">DM Sans</div>
+                  <div class="font-display__role">Body text</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sidebar-card reveal">
+            <div class="sidebar-card__label">Explore</div>
+            <div class="explore-links">
+              {[
+                ['/source',   'Source',   'Deep dives'],
+                ['/notes',    'Notes',    'Short observations'],
+                ['/topics',   'Topics',   'Browse by subject'],
+                ['/timeline', 'Timeline', 'History of CS'],
+                ['/stats',    'Stats',    'Site by the numbers'],
+              ].map(([href, label, desc]) => (
+                <a href={href} class="explore-link">
+                  <span class="explore-link__label">{label}</span>
+                  <span class="explore-link__desc">{desc}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+
+        </aside>
+      </div>
+
+    </div>
+  </div>
+</Base>
+
+<script>
+// ── Minimal abstract canvas — deconstructing binary to structure ──
+const canvas = document.getElementById('aboutCanvas') as HTMLCanvasElement;
+if (canvas) {
+  const ctx = canvas.getContext('2d')!;
+  let W: number, H: number, t = 0;
+
+  // Floating particles that slowly organise into a grid pattern
+  const PARTICLE_COUNT = 60;
+  type Particle = {
+    x: number; y: number;
+    tx: number; ty: number; // target position
+    vx: number; vy: number;
+    size: number; alpha: number;
+    char: string;
+  };
+  let particles: Particle[] = [];
+
+  const CHARS = '01アイウエオ01{}[]<>()01';
+
+  function init() {
+    particles = Array.from({ length: PARTICLE_COUNT }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      tx: Math.random() * W,
+      ty: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      size: 9 + Math.random() * 5,
+      alpha: 0.04 + Math.random() * 0.1,
+      char: CHARS[Math.floor(Math.random() * CHARS.length)],
+    }));
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Subtle grid lines
+    ctx.strokeStyle = 'rgba(0,200,255,0.03)';
+    ctx.lineWidth = 1;
+    const GRID = 60;
+    for (let x = 0; x < W; x += GRID) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += GRID) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    // Particles drift slowly
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0 || p.x > W) p.vx *= -1;
+      if (p.y < 0 || p.y > H) p.vy *= -1;
+
+      ctx.font = `${p.size}px 'Space Mono', monospace`;
+      ctx.fillStyle = `rgba(0,200,255,${p.alpha})`;
+      ctx.textAlign = 'center';
+      ctx.fillText(p.char, p.x, p.y);
+    });
+
+    // Occasional connecting lines between nearby particles
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const a = particles[i], b = particles[j];
+        const d = Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2);
+        if (d < 80) {
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = `rgba(0,200,255,${0.03 * (1 - d/80)})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+    }
+
+    t++;
+    requestAnimationFrame(draw);
+  }
+
+  function resize() {
+    W = canvas.width  = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+    init();
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  draw();
+}
+
+// ── Scroll reveal ──
+const reveals = document.querySelectorAll('.reveal');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      io.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+reveals.forEach(r => io.observe(r));
+</script>
+
+<style>
+.about-page { min-height: 100vh; }
+
+/* ── Hero ── */
+.about-hero {
+  position: relative; height: 40vh; min-height: 280px;
+  display: flex; align-items: center;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden; background: #070a0f;
+}
+.about-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+}
+.about-hero__content {
+  position: relative; z-index: 2;
+  padding: 0 clamp(1.5rem, 5vw, 4rem);
+}
+.about-hero__tag {
+  font-family: var(--mono); font-size: 0.7rem; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 1rem; opacity: 0.7;
+}
+.about-hero__title {
+  font-family: var(--mono); font-size: clamp(2.5rem, 6vw, 5rem);
+  color: var(--heading); letter-spacing: -0.04em; line-height: 1;
+  margin-bottom: 1rem;
+}
+.about-hero__sub {
+  color: var(--text-dim); font-size: clamp(0.9rem, 2vw, 1.05rem);
+  line-height: 1.6; max-width: 480px;
+}
+
+/* ── Body ── */
+.about-body { padding: 4rem 0 8rem; }
+
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 4rem;
+  align-items: start;
+}
+
+/* ── Reveal animation ── */
+.reveal {
+  opacity: 0; transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ── About blocks ── */
+.about-block {
+  margin-bottom: 3.5rem;
+  padding-bottom: 3.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.about-block:last-child { border-bottom: none; margin-bottom: 0; }
+.about-block__label {
+  font-family: var(--mono); font-size: 0.68rem; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.15em;
+  margin-bottom: 1.5rem; opacity: 0.7;
+}
+.about-block__text {
+  color: var(--text); font-size: 1rem; line-height: 1.8;
+  margin-bottom: 1rem;
+}
+.about-block__text:last-child { margin-bottom: 0; }
+
+/* Coverage grid */
+.coverage-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+}
+.coverage-item {
+  display: flex; gap: 0.75rem; align-items: flex-start;
+  padding: 1rem; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: 4px;
+  border-left: 2px solid var(--item-color);
+  transition: border-color 0.2s;
+}
+.coverage-item:hover { border-color: var(--item-color); }
+.coverage-item__dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--item-color); flex-shrink: 0; margin-top: 4px;
+}
+.coverage-item__cat {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--item-color);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.35rem;
+}
+.coverage-item__desc {
+  font-size: 0.78rem; color: var(--text-dim); line-height: 1.5;
+}
+
+/* Formats */
+.formats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.format-card {
+  padding: 1.5rem; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: 4px;
+}
+.format-card__name {
+  font-family: var(--mono); font-size: 1.1rem; font-weight: 700;
+  letter-spacing: -0.02em; margin-bottom: 0.75rem;
+}
+.format-card__desc {
+  font-size: 0.83rem; color: var(--text-dim); line-height: 1.6;
+}
+
+/* Philosophy */
+.philosophy-list { display: flex; flex-direction: column; gap: 0; }
+.philosophy-item {
+  padding: 1rem 0; border-bottom: 1px solid var(--border);
+  display: grid; grid-template-columns: 160px 1fr; gap: 1.5rem; align-items: baseline;
+}
+.philosophy-item:last-child { border-bottom: none; }
+.philosophy-item__title {
+  font-family: var(--mono); font-size: 0.78rem; color: var(--heading);
+  font-weight: 700; letter-spacing: -0.01em;
+}
+.philosophy-item__desc {
+  font-size: 0.85rem; color: var(--text-dim); line-height: 1.6;
+}
+
+/* ── Sidebar ── */
+.about-sidebar { display: flex; flex-direction: column; gap: 1.5rem; position: sticky; top: 5rem; }
+.sidebar-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1.25rem;
+}
+.sidebar-card__label {
+  font-family: var(--mono); font-size: 0.62rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.15em;
+  margin-bottom: 0.9rem; opacity: 0.6;
+}
+.sidebar-card__value {
+  font-family: var(--mono); font-size: 0.85rem;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+
+/* Status dot */
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: status-pulse 2.5s ease-in-out infinite;
+}
+@keyframes status-pulse {
+  0%,100% { opacity: 1; box-shadow: 0 0 8px var(--accent); }
+  50%      { opacity: 0.5; box-shadow: 0 0 3px var(--accent); }
+}
+
+/* Tech list */
+.tech-list { display: flex; flex-direction: column; gap: 0; }
+.tech-item {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.78rem;
+}
+.tech-item:last-child { border-bottom: none; }
+.tech-item__name { font-family: var(--mono); color: var(--text); }
+.tech-item__desc { color: var(--text-dim); font-size: 0.7rem; }
+
+/* Font display */
+.font-display { display: flex; flex-direction: column; gap: 0.75rem; }
+.font-display__item { display: flex; align-items: center; gap: 0.75rem; }
+.font-display__sample {
+  width: 44px; height: 44px; border-radius: 4px; background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; color: var(--heading); flex-shrink: 0;
+}
+.font-display__sample--mono { font-family: var(--mono); }
+.font-display__sample--body { font-family: var(--body, sans-serif); }
+.font-display__name { font-family: var(--mono); font-size: 0.75rem; color: var(--text); }
+.font-display__role { font-size: 0.68rem; color: var(--text-dim); margin-top: 0.1rem; }
+
+/* Explore links */
+.explore-links { display: flex; flex-direction: column; gap: 0; }
+.explore-link {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.6rem 0; border-bottom: 1px solid var(--border);
+  text-decoration: none; transition: padding-left 0.2s;
+}
+.explore-link:last-child { border-bottom: none; }
+.explore-link:hover { padding-left: 0.4rem; }
+.explore-link__label {
+  font-family: var(--mono); font-size: 0.78rem; color: var(--text);
+  transition: color 0.2s;
+}
+.explore-link:hover .explore-link__label { color: var(--accent); }
+.explore-link__desc { font-size: 0.68rem; color: var(--text-dim); }
+
+
+.about-quote {
+  margin: 0;
+  padding: 2rem 2.5rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+}
+.about-quote__text {
+  font-family: var(--mono);
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+  color: var(--heading);
+  letter-spacing: -0.03em;
+  line-height: 1.3;
+  margin-bottom: 1rem;
+}
+.about-quote__cite {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--accent);
+  opacity: 0.7;
+  letter-spacing: 0.1em;
+  font-style: normal;
+}
+
+
+/* ── Responsive ── */
+@media (max-width: 860px) {
+  .about-grid { grid-template-columns: 1fr; }
+  .about-sidebar { position: static; }
+  .coverage-grid { grid-template-columns: 1fr; }
+  .formats-grid { grid-template-columns: 1fr; }
+  .philosophy-item { grid-template-columns: 1fr; gap: 0.4rem; }
+}
+</style>

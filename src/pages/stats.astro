@@ -1,0 +1,575 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const source = await getCollection('source', ({ data }) => !data.draft);
+const notes  = await getCollection('notes',  ({ data }) => !data.draft);
+const all    = [...source, ...notes];
+
+// ── Core stats ──
+const totalPosts       = all.length;
+const totalSourcePosts = source.length;
+const totalNotesPosts  = notes.length;
+
+// Estimate word count from description (real impl would read body)
+// Reading time is stored in frontmatter
+const totalReadingTime = all.reduce((acc, p) => acc + (p.data.readingTime ?? 0), 0);
+const avgReadingTime   = totalPosts > 0 ? Math.round(totalReadingTime / totalPosts) : 0;
+
+// ── Posts by month ──
+const byMonth: Record<string, number> = {};
+all.forEach(p => {
+  const key = p.data.date.toISOString().slice(0, 7); // YYYY-MM
+  byMonth[key] = (byMonth[key] ?? 0) + 1;
+});
+// Fill in gaps so chart is continuous
+const sortedMonths = Object.keys(byMonth).sort();
+const monthData = sortedMonths.map(m => ({ month: m, count: byMonth[m] }));
+
+// ── Posts by topic ──
+const CORE_TOPICS = [
+  'compilers', 'operating-systems', 'distributed-systems',
+  'networking', 'machine-learning', 'algorithms',
+  'programming-languages', 'papers',
+];
+const byTopic: Record<string, number> = {};
+CORE_TOPICS.forEach(t => { byTopic[t] = 0; });
+all.forEach(p => {
+  (p.data.tags ?? []).forEach(tag => {
+    if (CORE_TOPICS.includes(tag)) byTopic[tag]++;
+  });
+});
+const topicData = CORE_TOPICS
+  .map(t => ({ topic: t, count: byTopic[t] }))
+  .sort((a, b) => b.count - a.count);
+
+// ── Tag frequency (all tags) ──
+const tagFreq: Record<string, number> = {};
+all.forEach(p => {
+  (p.data.tags ?? []).forEach(tag => {
+    tagFreq[tag] = (tagFreq[tag] ?? 0) + 1;
+  });
+});
+const tagData = Object.entries(tagFreq)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 20);
+
+// ── Reading time buckets ──
+const rtBuckets = { '< 5 min': 0, '5–10 min': 0, '10–20 min': 0, '20+ min': 0 };
+all.forEach(p => {
+  const rt = p.data.readingTime ?? 0;
+  if (rt < 5)       rtBuckets['< 5 min']++;
+  else if (rt < 10) rtBuckets['5–10 min']++;
+  else if (rt < 20) rtBuckets['10–20 min']++;
+  else              rtBuckets['20+ min']++;
+});
+
+const serialised = {
+  totalPosts, totalSourcePosts, totalNotesPosts,
+  totalReadingTime, avgReadingTime,
+  monthData, topicData, tagData,
+  rtBuckets: Object.entries(rtBuckets).map(([k,v]) => ({ label: k, count: v })),
+};
+---
+<Base title="Stats" description="Auto-generated statistics about Decompiled.">
+  <div class="stats-page">
+
+    <!-- Header -->
+    <header class="stats-header container--wide">
+      <p class="stats-header__tag">// stats</p>
+      <h1 class="stats-header__title">By the numbers</h1>
+      <p class="stats-header__desc">
+        Auto-generated from the content collection. Updates every publish.
+      </p>
+    </header>
+
+    <div class="stats-body container--wide">
+
+      <!-- Big numbers -->
+      <section class="big-stats">
+        <div class="big-stat">
+          <span class="big-stat__num" id="animPosts">0</span>
+          <span class="big-stat__label">total posts</span>
+        </div>
+        <div class="big-stat__divider"></div>
+        <div class="big-stat">
+          <span class="big-stat__num" id="animReading">0</span>
+          <span class="big-stat__label">minutes of reading</span>
+        </div>
+        <div class="big-stat__divider"></div>
+        <div class="big-stat">
+          <span class="big-stat__num" id="animAvg">0</span>
+          <span class="big-stat__label">avg reading time</span>
+        </div>
+        <div class="big-stat__divider"></div>
+        <div class="big-stat">
+          <div class="big-stat__split">
+            <span class="big-stat__num--sm" style="color:#00c8ff">{totalSourcePosts}</span>
+            <span class="big-stat__split-div">/</span>
+            <span class="big-stat__num--sm" style="color:#00d084">{totalNotesPosts}</span>
+          </div>
+          <span class="big-stat__label">source / notes</span>
+        </div>
+      </section>
+
+      <!-- Source vs Notes ratio bar -->
+      <section class="stat-section">
+        <h2 class="stat-section__title">Collection split</h2>
+        <div class="ratio-bar-wrap">
+          <div class="ratio-bar">
+            <div
+              class="ratio-bar__source"
+              style={`width:${totalPosts > 0 ? (totalSourcePosts/totalPosts*100).toFixed(1) : 50}%`}
+            ></div>
+          </div>
+          <div class="ratio-bar__labels">
+            <span style="color:#00c8ff">
+              source — {totalPosts > 0 ? (totalSourcePosts/totalPosts*100).toFixed(0) : 0}%
+            </span>
+            <span style="color:#00d084">
+              notes — {totalPosts > 0 ? (totalNotesPosts/totalPosts*100).toFixed(0) : 0}%
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Posts over time -->
+      <section class="stat-section">
+        <h2 class="stat-section__title">Posts over time</h2>
+        {monthData.length === 0
+          ? <p class="stat-empty">// no posts yet</p>
+          : <canvas id="monthChart" class="chart-canvas" height="180"></canvas>
+        }
+      </section>
+
+      <!-- Two column: topics + reading time -->
+      <div class="stat-two-col">
+
+        <section class="stat-section">
+          <h2 class="stat-section__title">By topic</h2>
+          {topicData.every(t => t.count === 0)
+            ? <p class="stat-empty">// no tagged posts yet</p>
+            : <div class="topic-bars" id="topicBars"></div>
+          }
+        </section>
+
+        <section class="stat-section">
+          <h2 class="stat-section__title">Reading time distribution</h2>
+          <canvas id="rtChart" class="chart-canvas" height="200"></canvas>
+        </section>
+
+      </div>
+
+      <!-- Tag cloud -->
+      <section class="stat-section">
+        <h2 class="stat-section__title">All tags</h2>
+        {tagData.length === 0
+          ? <p class="stat-empty">// no tags yet</p>
+          : <div class="tag-cloud" id="tagCloud"></div>
+        }
+      </section>
+
+    </div>
+  </div>
+</Base>
+
+<script define:vars={{ serialised }}>
+const {
+  totalPosts, totalReadingTime, avgReadingTime,
+  monthData, topicData, tagData, rtBuckets,
+  totalSourcePosts, totalNotesPosts,
+} = serialised;
+
+// ── Animate counters ──
+function animateCount(el, target, duration = 1200) {
+  const start = performance.now();
+  function frame(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(ease * target);
+    if (p < 1) requestAnimationFrame(frame);
+    else el.textContent = target;
+  }
+  requestAnimationFrame(frame);
+}
+
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    animateCount(document.getElementById('animPosts'),   totalPosts,        1000);
+    animateCount(document.getElementById('animReading'), totalReadingTime,  1400);
+    animateCount(document.getElementById('animAvg'),     avgReadingTime,    800);
+    io.disconnect();
+  });
+}, { threshold: 0.3 });
+const bigStats = document.querySelector('.big-stats');
+if (bigStats) io.observe(bigStats);
+
+
+// ── Shared canvas helpers ──
+const ACCENT  = '#00c8ff';
+const GREEN   = '#00d084';
+const PURPLE  = '#c792ea';
+const AMBER   = '#f0a500';
+const BORDER  = '#1e2d45';
+const TEXTDIM = '#6a7f96';
+const MONO    = "'Space Mono', monospace";
+
+function setupCanvas(id) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return null;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width  = rect.width  * dpr;
+  canvas.height = canvas.height * dpr; // height set via attribute
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  canvas.style.width  = rect.width + 'px';
+  return { canvas, ctx, W: rect.width, H: parseInt(canvas.getAttribute('height')) };
+}
+
+
+// ── Posts over time bar chart ──
+if (monthData.length > 0) {
+  const c = setupCanvas('monthChart');
+  if (c) {
+    const { ctx, W, H } = c;
+    const pad = { top: 20, right: 16, bottom: 36, left: 32 };
+    const chartW = W - pad.left - pad.right;
+    const chartH = H - pad.top  - pad.bottom;
+    const maxVal = Math.max(...monthData.map(d => d.count), 1);
+    const barW   = Math.max(6, chartW / monthData.length - 4);
+
+    // Grid lines
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.top + chartH - (i / 4) * chartH;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + chartW, y);
+      ctx.strokeStyle = BORDER; ctx.lineWidth = 1; ctx.stroke();
+      if (i > 0) {
+        ctx.font = `10px ${MONO}`;
+        ctx.fillStyle = TEXTDIM; ctx.textAlign = 'right';
+        ctx.fillText(Math.round((i/4)*maxVal), pad.left - 4, y + 4);
+      }
+    }
+
+    // Animate bars in
+    let prog = 0;
+    function drawBars() {
+      ctx.clearRect(pad.left, pad.top, chartW, chartH + 1);
+
+      // Redraw grid
+      for (let i = 0; i <= 4; i++) {
+        const y = pad.top + chartH - (i / 4) * chartH;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + chartW, y);
+        ctx.strokeStyle = BORDER; ctx.lineWidth = 1; ctx.stroke();
+      }
+
+      monthData.forEach((d, i) => {
+        const x = pad.left + i * (chartW / monthData.length) + (chartW / monthData.length - barW) / 2;
+        const fullH = (d.count / maxVal) * chartH;
+        const h = fullH * Math.min(prog, 1);
+        const y = pad.top + chartH - h;
+
+        // Bar
+        const grad = ctx.createLinearGradient(0, y, 0, y+h);
+        grad.addColorStop(0, ACCENT);
+        grad.addColorStop(1, `${ACCENT}44`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect(x, y, barW, h, [2, 2, 0, 0]);
+        ctx.fill();
+
+        // Month label — show every other if crowded
+        if (monthData.length <= 12 || i % 2 === 0) {
+          ctx.font = `9px ${MONO}`;
+          ctx.fillStyle = TEXTDIM; ctx.textAlign = 'center';
+          const label = d.month.slice(2); // YY-MM
+          ctx.fillText(label, x + barW/2, pad.top + chartH + 18);
+        }
+      });
+
+      prog += 0.04;
+      if (prog < 1) requestAnimationFrame(drawBars);
+    }
+
+    const chartIo = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) { drawBars(); chartIo.disconnect(); }
+    }, { threshold: 0.3 });
+    chartIo.observe(c.canvas);
+  }
+}
+
+
+// ── Topic horizontal bars ──
+const topicBarsEl = document.getElementById('topicBars');
+if (topicBarsEl && topicData.some(t => t.count > 0)) {
+  const TOPIC_COLORS = {
+    'compilers':             '#00c8ff',
+    'operating-systems':     '#00d084',
+    'distributed-systems':   '#c792ea',
+    'networking':            '#f78c6c',
+    'machine-learning':      '#f0a500',
+    'algorithms':            '#82aaff',
+    'programming-languages': '#ff5370',
+    'papers':                '#e8833a',
+  };
+  const maxCount = Math.max(...topicData.map(t => t.count), 1);
+
+  topicBarsEl.innerHTML = topicData.map(t => {
+    const pct = (t.count / maxCount * 100).toFixed(1);
+    const color = TOPIC_COLORS[t.topic] ?? ACCENT;
+    const label = t.topic.replace(/-/g, ' ');
+    return `
+      <div class="topic-bar-row">
+        <div class="topic-bar-label">${label}</div>
+        <div class="topic-bar-track">
+          <div class="topic-bar-fill" data-pct="${pct}" style="background:${color};width:0%"></div>
+        </div>
+        <div class="topic-bar-count" style="color:${color}">${t.count}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Animate fills in on scroll
+  const barIo = new IntersectionObserver(entries => {
+    if (!entries[0].isIntersecting) return;
+    document.querySelectorAll('.topic-bar-fill').forEach((el, i) => {
+      setTimeout(() => {
+        el.style.transition = 'width 0.6s cubic-bezier(0.4,0,0.2,1)';
+        el.style.width = el.dataset.pct + '%';
+      }, i * 60);
+    });
+    barIo.disconnect();
+  }, { threshold: 0.2 });
+  barIo.observe(topicBarsEl);
+}
+
+
+// ── Reading time donut ──
+const rtC = setupCanvas('rtChart');
+if (rtC) {
+  const { ctx, W, H } = rtC;
+  const colors = [ACCENT, GREEN, PURPLE, AMBER];
+  const total  = rtBuckets.reduce((s, b) => s + b.count, 0) || 1;
+  const cx = W * 0.42, cy = H / 2, outerR = Math.min(cx, cy) * 0.75, innerR = outerR * 0.55;
+
+  let startAngle = -Math.PI / 2;
+  let animProg = 0;
+
+  function drawDonut() {
+    ctx.clearRect(0, 0, W, H);
+    const p = Math.min(animProg, 1);
+    let sa = -Math.PI / 2;
+
+    rtBuckets.forEach((b, i) => {
+      const sweep = (b.count / total) * Math.PI * 2 * p;
+      if (sweep <= 0) return;
+
+      // Segment
+      ctx.beginPath();
+      ctx.arc(cx, cy, outerR, sa, sa + sweep);
+      ctx.arc(cx, cy, innerR, sa + sweep, sa, true);
+      ctx.closePath();
+      ctx.fillStyle = colors[i];
+      ctx.fill();
+
+      // Gap
+      ctx.beginPath();
+      ctx.arc(cx, cy, outerR + 1, sa, sa + sweep);
+      ctx.arc(cx, cy, innerR - 1, sa + sweep, sa, true);
+      ctx.closePath();
+      ctx.fillStyle = '#070a0f';
+      ctx.fill();
+
+      sa += sweep;
+    });
+
+    // Centre text
+    if (p >= 1) {
+      ctx.font = `bold 22px ${MONO}`;
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(total, cx, cy - 8);
+      ctx.font = `10px ${MONO}`;
+      ctx.fillStyle = TEXTDIM;
+      ctx.fillText('posts', cx, cy + 12);
+    }
+
+    // Legend
+    const legendX = W * 0.72, legendStartY = cy - (rtBuckets.length * 22) / 2;
+    rtBuckets.forEach((b, i) => {
+      const y = legendStartY + i * 26;
+      ctx.fillStyle = colors[i];
+      ctx.fillRect(legendX, y, 10, 10);
+      ctx.font = `10px ${MONO}`;
+      ctx.fillStyle = TEXTDIM; ctx.textAlign = 'left';
+      ctx.fillText(b.label, legendX + 16, y + 8);
+      ctx.fillStyle = colors[i];
+      ctx.fillText(b.count, legendX + 16 + 62, y + 8);
+    });
+
+    animProg += 0.035;
+    if (animProg < 1) requestAnimationFrame(drawDonut);
+  }
+
+  const donutIo = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) { drawDonut(); donutIo.disconnect(); }
+  }, { threshold: 0.3 });
+  donutIo.observe(rtC.canvas);
+}
+
+
+// ── Tag cloud ──
+const tagCloudEl = document.getElementById('tagCloud');
+if (tagCloudEl && tagData.length > 0) {
+  const maxFreq = tagData[0][1];
+  const TOPIC_COLORS = {
+    'compilers':'#00c8ff','operating-systems':'#00d084','distributed-systems':'#c792ea',
+    'networking':'#f78c6c','machine-learning':'#f0a500','algorithms':'#82aaff',
+    'programming-languages':'#ff5370','papers':'#e8833a',
+  };
+  tagCloudEl.innerHTML = tagData.map(([tag, count]) => {
+    const size = 0.7 + (count / maxFreq) * 0.7;
+    const color = TOPIC_COLORS[tag] ?? ACCENT;
+    const opacity = 0.4 + (count / maxFreq) * 0.6;
+    return `<span class="cloud-tag" style="font-size:${size}rem;color:${color};opacity:${opacity}">${tag}<sup>${count}</sup></span>`;
+  }).join('');
+}
+</script>
+
+<style>
+.stats-page { min-height: 100vh; padding-bottom: 8rem; }
+
+.stats-header {
+  padding: 5rem 0 3rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4rem;
+}
+.stats-header__tag {
+  font-family: var(--mono); font-size: 0.7rem; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 1rem; opacity: 0.7;
+}
+.stats-header__title {
+  font-family: var(--mono); font-size: clamp(1.8rem, 3vw, 2.8rem);
+  color: var(--heading); letter-spacing: -0.03em; margin-bottom: 0.75rem;
+}
+.stats-header__desc { color: var(--text-dim); font-size: 0.95rem; line-height: 1.6; }
+
+/* ── Big stats ── */
+.big-stats {
+  display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+  border: 1px solid var(--border); border-radius: 4px; overflow: hidden;
+  margin-bottom: 4rem;
+}
+.big-stat {
+  flex: 1; min-width: 140px; padding: 2.5rem 2rem;
+  display: flex; flex-direction: column; gap: 0.5rem;
+  background: var(--bg2);
+}
+.big-stat__num {
+  font-family: var(--mono); font-size: clamp(2rem, 4vw, 3rem);
+  color: var(--accent); font-weight: 700; letter-spacing: -0.04em; line-height: 1;
+}
+.big-stat__num--sm {
+  font-family: var(--mono); font-size: clamp(1.5rem, 3vw, 2.2rem);
+  font-weight: 700; letter-spacing: -0.04em; line-height: 1;
+}
+.big-stat__split {
+  display: flex; align-items: baseline; gap: 0.4rem;
+}
+.big-stat__split-div { color: var(--border); font-size: 1.5rem; }
+.big-stat__label {
+  font-family: var(--mono); font-size: 0.68rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+.big-stat__divider {
+  width: 1px; align-self: stretch; background: var(--border);
+}
+
+/* ── Sections ── */
+.stat-section { margin-bottom: 4rem; }
+.stat-section__title {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.15em;
+  margin-bottom: 1.5rem; padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.stat-section__title::before {
+  content: ''; display: block; width: 16px; height: 1px; background: var(--accent); opacity: 0.6;
+}
+
+.stat-empty {
+  font-family: var(--mono); font-size: 0.78rem; color: var(--text-dim); opacity: 0.4;
+}
+
+/* ── Charts ── */
+.chart-canvas {
+  width: 100%; display: block;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 4px;
+  padding: 1rem;
+}
+
+/* ── Ratio bar ── */
+.ratio-bar-wrap { margin-bottom: 0.75rem; }
+.ratio-bar {
+  height: 8px; background: #00d08444; border-radius: 4px; overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+.ratio-bar__source {
+  height: 100%; background: #00c8ff; border-radius: 4px;
+  transition: width 1s cubic-bezier(0.4,0,0.2,1);
+}
+.ratio-bar__labels {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: 0.72rem;
+}
+
+/* ── Two col ── */
+.stat-two-col {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-bottom: 4rem;
+}
+
+/* ── Topic bars ── */
+.topic-bar-row {
+  display: grid; grid-template-columns: 140px 1fr 32px;
+  align-items: center; gap: 1rem; margin-bottom: 0.75rem;
+}
+.topic-bar-label {
+  font-family: var(--mono); font-size: 0.7rem; color: var(--text-dim);
+  text-transform: lowercase; letter-spacing: 0.03em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.topic-bar-track {
+  height: 6px; background: var(--bg2); border-radius: 3px; overflow: hidden;
+  border: 1px solid var(--border);
+}
+.topic-bar-fill { height: 100%; border-radius: 3px; }
+.topic-bar-count {
+  font-family: var(--mono); font-size: 0.72rem; text-align: right;
+}
+
+/* ── Tag cloud ── */
+.tag-cloud {
+  display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: baseline;
+  padding: 2rem; background: var(--bg2); border: 1px solid var(--border); border-radius: 4px;
+}
+.cloud-tag {
+  font-family: var(--mono); cursor: default; transition: opacity 0.2s;
+  letter-spacing: -0.01em;
+}
+.cloud-tag:hover { opacity: 1 !important; }
+.cloud-tag sup {
+  font-size: 0.55em; margin-left: 2px; opacity: 0.6;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .stat-two-col { grid-template-columns: 1fr; }
+  .big-stats { flex-direction: column; }
+  .big-stat__divider { width: 100%; height: 1px; align-self: auto; }
+  .topic-bar-row { grid-template-columns: 100px 1fr 28px; }
+}
+</style>

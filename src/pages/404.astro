@@ -1,0 +1,257 @@
+---
+// src/pages/404.astro
+// Full-page kernel panic. No Base layout — this replaces the entire page.
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 — Kernel Panic</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; background: #0a0a0a; overflow: hidden; }
+
+#kp {
+  position: fixed; inset: 0; background: #0a0a0a;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: clamp(11px, 1.4vw, 13px);
+  line-height: 1.55; color: #c8c8c8; overflow: hidden; z-index: 1;
+}
+#kp::after {
+  content: ''; position: fixed; inset: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.75) 100%);
+  pointer-events: none; z-index: 10;
+}
+#scanlines { position: fixed; inset: 0; pointer-events: none; z-index: 9; opacity: 0.06; }
+#screen {
+  position: relative; z-index: 5;
+  padding: clamp(1.2rem, 3vw, 2.5rem) clamp(1.5rem, 4vw, 3.5rem);
+  height: 100vh; overflow: hidden;
+}
+#output { white-space: pre-wrap; word-break: break-all; }
+
+.w { color: #ffffff; } .d { color: #777; }   .r { color: #ff5555; }
+.g { color: #55ff55; } .y { color: #ffff55; } .b { color: #5599ff; }
+.c { color: #55ffff; }
+
+#cursor { display: inline; color: #c8c8c8; animation: blink 1.1s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+#hint {
+  position: fixed; bottom: 2.2rem; left: 0; right: 0; text-align: center;
+  font-family: 'Courier New', monospace; font-size: 0.8rem; color: #444;
+  opacity: 0; transition: opacity 1.4s ease; z-index: 20;
+}
+#hint.visible { opacity: 1; }
+#hint a { color: #5599ff; text-decoration: none; }
+#hint a:hover { text-decoration: underline; }
+
+@keyframes flicker {
+  0%{opacity:0} 5%{opacity:0.9} 10%{opacity:0.7} 15%{opacity:1} 100%{opacity:1}
+}
+#screen { animation: flicker 0.5s ease forwards; }
+</style>
+</head>
+<body>
+<div id="kp">
+  <canvas id="scanlines"></canvas>
+  <div id="screen">
+    <pre id="output"></pre><span id="cursor">█</span>
+  </div>
+  <div id="hint">press any key or <a href="/">return home →</a></div>
+</div>
+
+<script>
+(function () {
+
+  // ── Seeded RNG (deterministic per URL) ──
+  let seed = 0;
+  const path = window.location.pathname || '/404';
+  for (let i = 0; i < path.length; i++) seed += path.charCodeAt(i);
+  seed = Math.abs(seed * 1103515245 + 12345) || 42;
+  function rand() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+  function rh(n) { let s = ''; for (let i = 0; i < n; i++) s += '0123456789abcdef'[Math.floor(rand() * 16)]; return s; }
+  function pick(a) { return a[Math.floor(rand() * a.length)]; }
+
+  // ── Fake kernel data ──
+  const faultAddr = '0x' + '0'.repeat(Math.floor(rand() * 8 + 2));
+  const kver      = `6.${Math.floor(rand()*4+8)}.${Math.floor(rand()*20+1)}-${Math.floor(rand()*200+100)}-generic`;
+  const pid       = Math.floor(rand() * 30000 + 1000);
+  const comm      = pick(['nginx', 'node', 'python3', 'sshd', 'containerd', 'kworker/u8:2', 'systemd']);
+  const cpu       = Math.floor(rand() * 16);
+  const tsBase    = (rand() * 99999 + 1000).toFixed(6);
+  function T()    { return `[${(parseFloat(tsBase) + rand() * 0.01).toFixed(6)}]`; }
+  const pgd       = rh(16);
+
+  const R = ['RAX','RBX','RCX','RDX','RSI','RDI','RBP','R8','R9','R10','R11','R12','R13','R14','R15','RIP','RSP']
+    .reduce((o, k) => { o[k] = rh(16); return o; }, {});
+
+  const trace = [
+    `__do_page_fault+0x${rh(2)}/0x${rh(3)}`,
+    `do_page_fault+0x${rh(2)}/0x60`,
+    `page_fault+0x${rh(2)}/0x30`,
+    `exc_page_fault+0x${rh(3)}/0x${rh(3)}`,
+    `handle_mm_fault+0x${rh(3)}/0x${rh(3)}`,
+    `__handle_mm_fault+0x${rh(3)}/0x${rh(3)}`,
+    `do_anonymous_page+0x${rh(3)}/0x${rh(3)}`,
+    pick([`vfs_read+0x${rh(2)}/0x${rh(3)}`, `vfs_write+0x${rh(2)}/0x${rh(3)}`]),
+    `do_syscall_64+0x${rh(2)}/0x90`,
+    `entry_SYSCALL_64_after_hwframe+0x${rh(2)}/0x${rh(2)}`,
+  ];
+
+  // ── Build segment list upfront ──
+  // Each segment: { text, color, instant }
+  // instant=true → flush all at once; instant=false → typewriter
+  const segs = [];
+  function s(text, color, instant) { segs.push({ text, color: color || null, instant: instant !== false }); }
+  function ln(parts, instant) {
+    if (typeof parts === 'string') { s(parts + '\n', null, instant); return; }
+    parts.forEach(p => typeof p === 'string' ? s(p, null, instant) : s(p.t, p.c || null, instant));
+    s('\n', null, instant);
+  }
+  function bl(instant) { s('\n', null, instant); }
+
+  ln([{t:`Linux version ${kver} (gcc version 12.3.0 (Ubuntu 12.3.0-1ubuntu1~23.04))`, c:'w'}]);
+  ln([{t:`Command line: BOOT_IMAGE=/vmlinuz-${kver} root=/dev/mapper/ubuntu--vg-ubuntu--lv ro quiet splash`, c:'d'}]);
+  bl();
+  ln([{t:T()+' ',c:'d'},{t:`BUG: unable to handle page fault for address: `,c:'r'},{t:faultAddr,c:'w'}]);
+  ln([{t:T()+' ',c:'d'},{t:`#PF: supervisor read access in kernel mode`,c:'r'}]);
+  ln([{t:T()+' ',c:'d'},{t:`#PF: error_code(0x0000) - not-present page`,c:'r'}]);
+  bl();
+  ln([{t:T()+' ',c:'d'},{t:`PGD ${pgd} P4D 0`}]);
+  ln([{t:T()+' ',c:'d'},{t:`Oops: 0000 [#1] PREEMPT SMP NOPTI`,c:'r'}]);
+  bl();
+  ln([{t:T()+' ',c:'d'},{t:`CPU: ${cpu} PID: `},{t:String(pid),c:'w'},{t:` Comm: `},{t:comm,c:'c'},{t:` Not tainted `,c:'r'},{t:kver}]);
+  ln([{t:T()+' ',c:'d'},{t:`Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS 1.16.2-1 04/01/2014`,c:'d'}]);
+  bl();
+  ln([{t:T()+' ',c:'d'},{t:`RIP: 0010:[<${R.RIP}>] [<${R.RIP}>] ${trace[0]}`}]);
+  ln([{t:T()+' ',c:'d'},{t:`Code: `},{t:Array.from({length:24},()=>rh(2)).join(' '),c:'d'}]);
+  bl();
+  ln([{t:T()+' ',c:'d'},{t:`RSP: 0018:`},{t:R.RSP,c:'b'},{t:`  EFLAGS: `},{t:`00010246`,c:'b'}]);
+  ln([{t:T()+' ',c:'d'},{t:`RAX: `},{t:R.RAX,c:'b'},{t:` RBX: `},{t:R.RBX,c:'b'},{t:` RCX: `},{t:R.RCX,c:'b'}]);
+  ln([{t:T()+' ',c:'d'},{t:`RDX: `},{t:R.RDX,c:'b'},{t:` RSI: `},{t:R.RSI,c:'b'},{t:` RDI: `},{t:R.RDI,c:'b'}]);
+  ln([{t:T()+' ',c:'d'},{t:`RBP: `},{t:R.RBP,c:'b'},{t:`  R8: `},{t:R.R8,c:'b'},{t:`  R9: `},{t:R.R9,c:'b'}]);
+  ln([{t:T()+' ',c:'d'},{t:`R10: `},{t:R.R10,c:'b'},{t:` R11: `},{t:R.R11,c:'b'},{t:` R12: `},{t:R.R12,c:'b'}]);
+  ln([{t:T()+' ',c:'d'},{t:`R13: `},{t:R.R13,c:'b'},{t:` R14: `},{t:R.R14,c:'b'},{t:` R15: `},{t:R.R15,c:'b'}]);
+  bl();
+  ln([{t:T()+' ',c:'d'},{t:`FS: 0000000000000000  GS: ${rh(16)}  knlGS: ${rh(16)}`,c:'d'}]);
+  ln([{t:T()+' ',c:'d'},{t:`CS: 0010 DS: 0000 ES: 0000 CR0: 0000000080050033`,c:'d'}]);
+  ln([{t:T()+' ',c:'d'},{t:`CR2: `},{t:faultAddr,c:'w'},{t:`  CR3: `},{t:rh(16),c:'d'},{t:`  CR4: `},{t:`00000000003706e0`,c:'d'}]);
+  bl();
+  ln([{t:T()+' ',c:'d'},{t:`Call Trace:`,c:'y'}]);
+  ln([{t:T()+' ',c:'d'},{t:` <TASK>`,c:'w'}]);
+  trace.forEach(fn => ln([{t:T()+' ',c:'d'},{t:`  [${rh(16)}] `,c:'g'},{t:fn,c:'w'}]));
+  ln([{t:T()+' ',c:'d'},{t:` </TASK>`,c:'w'}]);
+  bl();
+  ln([{t:T()+' ',c:'d'},{t:`Modules linked in: `,c:'y'},{t:`overlay nft_fib_inet nft_fib_ipv4 nft_fib_ipv6 nft_fib nft_reject_inet nf_reject_ipv4 nf_reject_ipv6 nft_reject nft_ct nft_chain_nat nf_nat nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 bpfilter`,c:'d'}]);
+  bl();
+  ln([{t:T()+' ',c:'d'},{t:`CR2: `},{t:faultAddr,c:'w'}]);
+  ln([{t:T()+' ',c:'d'},{t:`---[ end trace ${rh(16)} ]---`,c:'r'}]);
+  bl();
+
+  // Slow typewriter section
+  s(`Kernel panic`, 'r', false);
+  s(` - not syncing: `, null, false);
+  s(`Fatal exception\n`, 'w', false);
+  bl(false);
+  s(`CPU: ${cpu} PID: ${pid} Comm: ${comm} ${kver}\n`, 'd', false);
+  s(`Kernel Offset: 0x${rh(10)} from 0xffffffff81000000\n`, 'd', false);
+  bl(false);
+  s(`---\n\n`, 'r', false);
+  s(`// the page at `, 'd', false);
+  s(path, 'w', false);
+  s(` caused a general protection fault\n`, 'd', false);
+  s(`// it does not exist in this address space\n`, 'd', false);
+  s(`// perhaps you were looking for something that was never mapped\n`, 'd', false);
+
+  // ── DOM helpers ──
+  const output = document.getElementById('output');
+  const cursor = document.getElementById('cursor');
+  const hint   = document.getElementById('hint');
+  cursor.style.display = 'none';
+
+  function appendNode(text, color) {
+    if (!text) return;
+    if (color) {
+      const el = document.createElement('span');
+      el.className = color;
+      el.textContent = text;
+      output.appendChild(el);
+    } else {
+      output.appendChild(document.createTextNode(text));
+    }
+  }
+
+  function scrollDown() {
+    document.getElementById('screen').scrollTop = 999999;
+  }
+
+  // ── Playback ──
+  let idx = 0;
+
+  function playInstant() {
+    while (idx < segs.length && segs[idx].instant) {
+      const seg = segs[idx++];
+      appendNode(seg.text, seg.color);
+    }
+    scrollDown();
+    if (idx >= segs.length) { finish(); return; }
+    // Pause before typewriter starts — feels like the machine choked
+    setTimeout(playTypewriter, 380);
+  }
+
+  function playTypewriter() {
+    if (idx >= segs.length) { finish(); return; }
+    const seg = segs[idx++];
+    // If we somehow hit an instant segment, flush it and continue
+    if (seg.instant) { appendNode(seg.text, seg.color); scrollDown(); playTypewriter(); return; }
+
+    const chars = [...seg.text];
+    let ci = 0;
+    let container = null;
+    if (seg.color) {
+      container = document.createElement('span');
+      container.className = seg.color;
+      output.appendChild(container);
+    }
+
+    function typeChar() {
+      if (ci >= chars.length) { scrollDown(); setTimeout(playTypewriter, 20); return; }
+      const ch = chars[ci++];
+      if (container) container.textContent += ch;
+      else output.appendChild(document.createTextNode(ch));
+      scrollDown();
+      setTimeout(typeChar, 24 + Math.random() * 16);
+    }
+    typeChar();
+  }
+
+  function finish() {
+    cursor.style.display = 'inline';
+    setTimeout(() => hint.classList.add('visible'), 900);
+    setTimeout(() => {
+      document.addEventListener('keydown', () => { window.location.href = '/'; }, { once: true });
+    }, 700);
+  }
+
+  // ── CRT scanlines ──
+  function drawScanlines() {
+    const cv = document.getElementById('scanlines');
+    cv.width = window.innerWidth;
+    cv.height = window.innerHeight;
+    const cx = cv.getContext('2d');
+    for (let y = 0; y < cv.height; y += 3) {
+      cx.fillStyle = 'rgba(0,0,0,1)';
+      cx.fillRect(0, y, cv.width, 1);
+    }
+  }
+
+  drawScanlines();
+  window.addEventListener('resize', drawScanlines);
+  setTimeout(playInstant, 120);
+
+})();
+</script>
+</body>
+</html>

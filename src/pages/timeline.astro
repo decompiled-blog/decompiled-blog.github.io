@@ -1,0 +1,497 @@
+---
+import Base from '../layouts/Base.astro';
+
+const events = [
+  // 1940s
+  { year: 1936, title: "Turing's Universal Machine", category: "theory", desc: "Alan Turing publishes 'On Computable Numbers', defining computation itself and laying the theoretical foundation for every computer ever built." },
+  { year: 1945, title: "Von Neumann Architecture", category: "hardware", desc: "John von Neumann describes a stored-program computer — separating memory from CPU, a design that defines computing to this day." },
+  { year: 1947, title: "The Transistor", category: "hardware", desc: "Shockley, Bardeen and Brattain at Bell Labs invent the transistor, replacing vacuum tubes and making small, fast, cheap computers possible." },
+  { year: 1948, title: "A Mathematical Theory of Communication", category: "theory", desc: "Claude Shannon founds information theory — bits, entropy, channel capacity. The mathematical language of everything digital." },
+  { year: 1949, title: "EDSAC — First Stored-Program Computer", category: "hardware", desc: "Maurice Wilkes runs the first program on EDSAC at Cambridge, the first practical stored-program computer." },
+
+  // 1950s
+  { year: 1950, title: "The Turing Test", category: "theory", desc: "Turing proposes the imitation game as a test of machine intelligence in 'Computing Machinery and Intelligence'." },
+  { year: 1951, title: "First Compiler", category: "compilers", desc: "Grace Hopper writes A-0, the first compiler — a program that translates symbolic code into machine instructions. The idea was considered impossible." },
+  { year: 1954, title: "FORTRAN", category: "languages", desc: "John Backus at IBM designs FORTRAN — the first high-level programming language to see widespread use. Proved compilers could match hand-written assembly." },
+  { year: 1956, title: "The Chomsky Hierarchy", category: "theory", desc: "Noam Chomsky formalises a hierarchy of formal grammars — regular, context-free, context-sensitive. Became the theoretical backbone of compiler design." },
+  { year: 1958, title: "LISP", category: "languages", desc: "John McCarthy designs LISP — the first functional language, introducing recursion, garbage collection, and symbolic computation." },
+  { year: 1959, title: "COBOL", category: "languages", desc: "Grace Hopper leads development of COBOL, the first language designed for business data processing. Still running trillion-dollar systems today." },
+
+  // 1960s
+  { year: 1960, title: "ALGOL 60", category: "languages", desc: "ALGOL 60 introduces block structure, lexical scoping, and recursive procedures. Almost every modern language descends from it." },
+  { year: 1962, title: "First Virtual Memory System", category: "os", desc: "The Atlas computer at Manchester introduces virtual memory — letting programs use more memory than physically exists. A concept every OS uses today." },
+  { year: 1964, title: "IBM System/360", category: "hardware", desc: "IBM releases the System/360 — the first family of compatible computers, separating architecture from implementation. Defined the concept of an ISA." },
+  { year: 1965, title: "Moore's Law", category: "hardware", desc: "Gordon Moore observes that transistor count doubles every two years. Held for fifty years and shaped every assumption in computing." },
+  { year: 1967, title: "Simula — First OOP Language", category: "languages", desc: "Ole-Johan Dahl and Kristen Nygaard design Simula, introducing classes and objects. Every object-oriented language since descends from this idea." },
+  { year: 1969, title: "UNIX", category: "os", desc: "Ken Thompson and Dennis Ritchie at Bell Labs write UNIX — a small, elegant operating system that introduced files, pipes, and the philosophy of doing one thing well." },
+  { year: 1969, title: "ARPANET", category: "networking", desc: "The first message is sent over ARPANET between UCLA and Stanford. The packet-switched network that became the internet." },
+
+  // 1970s
+  { year: 1970, title: "The Relational Model", category: "theory", desc: "Edgar Codd publishes 'A Relational Model of Data', founding relational databases and SQL." },
+  { year: 1972, title: "The C Language", category: "languages", desc: "Dennis Ritchie designs C at Bell Labs to rewrite UNIX. Portable, close to the metal, still ubiquitous fifty years later." },
+  { year: 1973, title: "Ethernet", category: "networking", desc: "Bob Metcalfe at Xerox PARC invents Ethernet — a protocol for local area networks that remains the dominant LAN technology." },
+  { year: 1974, title: "TCP/IP Proposed", category: "networking", desc: "Cerf and Kahn publish 'A Protocol for Packet Network Interconnection', describing TCP/IP — the protocol that glues the internet together." },
+  { year: 1975, title: "The Dragon Book — First Edition", category: "compilers", desc: "Aho and Ullman publish 'Principles of Compiler Design', the foundational compiler textbook. Later editions added the dragon cover that defined the field's identity." },
+  { year: 1977, title: "The Apple II", category: "hardware", desc: "Apple releases the Apple II — a mass-market personal computer that put computing into homes for the first time." },
+  { year: 1978, title: "Communicating Sequential Processes", category: "theory", desc: "Tony Hoare publishes CSP, a formal language for describing concurrent systems. Inspired Go's goroutines and channels decades later." },
+  { year: 1979, title: "AWK", category: "languages", desc: "Aho, Weinberger and Kernighan write AWK — a text-processing language and an early demonstration of pattern-action programming." },
+
+  // 1980s
+  { year: 1980, title: "Smalltalk-80", category: "languages", desc: "Xerox PARC releases Smalltalk-80 — the purest object-oriented language, introducing message passing, reflection, and the first modern GUI." },
+  { year: 1981, title: "The IBM PC", category: "hardware", desc: "IBM releases the PC using an open architecture. Microsoft licenses DOS. The decision to use commodity parts created the entire PC industry." },
+  { year: 1983, title: "GNU Project Founded", category: "os", desc: "Richard Stallman announces GNU — a free Unix-like operating system. Introduced copyleft and launched the free software movement." },
+  { year: 1983, title: "TCP/IP Adopted on ARPANET", category: "networking", desc: "ARPANET switches to TCP/IP. January 1st 1983 is considered the birthday of the internet." },
+  { year: 1984, title: "The Macintosh", category: "hardware", desc: "Apple releases the Macintosh — the first mass-market computer with a graphical user interface and a mouse." },
+  { year: 1985, title: "First FPGA", category: "hardware", desc: "Xilinx ships the XC2064 — the first field-programmable gate array. Reconfigurable hardware that can be reprogrammed after manufacture, now used in networking, finance, and ML inference." },
+  { year: 1985, title: "C++", category: "languages", desc: "Bjarne Stroustrup releases C++ — adding classes and object-oriented programming to C while keeping zero-cost abstractions." },
+  { year: 1987, title: "Perl", category: "languages", desc: "Larry Wall releases Perl — a practical extraction and reporting language that became the backbone of early web scripting." },
+  { year: 1989, title: "The World Wide Web Proposed", category: "networking", desc: "Tim Berners-Lee at CERN proposes a hypertext system for sharing documents. The proposal memo was titled 'Information Management: A Proposal'." },
+
+  // 1990s
+  { year: 1991, title: "Linux Kernel", category: "os", desc: "Linus Torvalds releases version 0.01 of the Linux kernel. Combined with GNU, it became the dominant OS for servers, mobile, and embedded systems." },
+  { year: 1991, title: "Python", category: "languages", desc: "Guido van Rossum releases Python — designed for readability, it became the dominant language for scripting, science, and eventually AI." },
+  { year: 1993, title: "Mosaic Browser", category: "networking", desc: "NCSA releases Mosaic — the first graphical web browser, making the web accessible to non-technical users and triggering the internet boom." },
+  { year: 1994, title: "The Dragon Book — Second Edition", category: "compilers", desc: "Aho, Sethi and Ullman publish the second edition of the Dragon Book, adding optimisation and code generation. The definitive compiler reference." },
+  { year: 1995, title: "Java", category: "languages", desc: "Sun releases Java — write once, run anywhere. Introduced the JVM, garbage collection at scale, and bytecode compilation." },
+  { year: 1995, title: "JavaScript", category: "languages", desc: "Brendan Eich writes JavaScript in ten days for Netscape. Became the language of the web despite its rushed origins." },
+  { year: 1996, title: "Flash Memory Goes Mainstream", category: "hardware", desc: "NAND flash storage begins replacing spinning disks in consumer devices, eventually transforming storage latency by orders of magnitude." },
+  { year: 1997, title: "The MapReduce Precursor — MPI", category: "distributed", desc: "MPI becomes the standard for distributed computing in scientific clusters — the model that MapReduce later simplified for commodity hardware." },
+  { year: 1998, title: "Google Founded", category: "distributed", desc: "Larry Page and Sergey Brin found Google, building search infrastructure that would produce some of the most influential distributed systems papers ever written." },
+  { year: 1999, title: "Jini and the Network is the Computer", category: "distributed", desc: "Sun's Jini project explores treating the network as a distributed computer — ideas that would resurface in cloud computing a decade later." },
+  { year: 1999, title: "NVIDIA GeForce 256", category: "hardware", desc: "NVIDIA coins the term 'GPU' with the GeForce 256 — the first chip to handle geometry transformation and lighting in hardware, offloading it from the CPU." },
+
+
+  // 2000s
+  { year: 2003, title: "The Google File System", category: "distributed", desc: "Google publishes the GFS paper — a distributed filesystem built on commodity hardware with failure as the norm. Inspired HDFS and modern distributed storage." },
+  { year: 2004, title: "MapReduce", category: "distributed", desc: "Dean and Ghemawat publish the MapReduce paper. A simple programming model for processing vast datasets across thousands of machines." },
+  { year: 2006, title: "Bigtable", category: "distributed", desc: "Google publishes Bigtable — a distributed storage system for structured data. Inspired HBase, Cassandra, and the NoSQL movement." },
+  { year: 2006, title: "Amazon EC2 Launches", category: "distributed", desc: "Amazon launches EC2 — the first commercially successful cloud computing platform. Changed how infrastructure is built and paid for." },
+  { year: 2006, title: "LLVM 1.0", category: "compilers", desc: "Chris Lattner releases LLVM 1.0 — a modular compiler infrastructure that became the backend for Clang, Swift, Rust, and countless others." },
+  { year: 2006, title: "NVIDIA CUDA", category: "hardware", desc: "NVIDIA releases CUDA — a parallel computing platform letting developers program GPUs for general computation. The foundation of modern deep learning infrastructure." },
+  { year: 2007, title: "The iPhone", category: "hardware", desc: "Apple releases the iPhone — a pocket computer with a touch interface. Triggered the mobile revolution and ARM's dominance." },
+  { year: 2008, title: "Dynamo — Amazon's Key-Value Store", category: "distributed", desc: "Amazon publishes the Dynamo paper — eventual consistency, consistent hashing, vector clocks. The blueprint for highly available distributed systems." },
+  { year: 2009, title: "Go Language", category: "languages", desc: "Google releases Go — designed for large-scale distributed systems, with goroutines, channels, and fast compilation at its core." },
+
+  // 2010s
+  { year: 2010, title: "25/100GbE and RDMA", category: "hardware", desc: "High-speed Ethernet and RDMA over Converged Ethernet (RoCE) become datacenter standards — enabling microsecond-latency network communication between servers, critical for distributed ML training." },
+  { year: 2010, title: "Spanner", category: "distributed", desc: "Google begins deploying Spanner — a globally distributed SQL database with external consistency. Published as a paper in 2012." },
+  { year: 2010, title: "Rust Announced", category: "languages", desc: "Mozilla researcher Graydon Hoare announces Rust — a systems language with memory safety without a garbage collector. Later became beloved for its ownership model." },
+  { year: 2012, title: "ImageNet and Deep Learning", category: "ml", desc: "AlexNet wins ImageNet by a massive margin using deep convolutional neural networks on GPUs. Marks the beginning of the deep learning era." },
+  { year: 2012, title: "Raft Consensus Algorithm", category: "distributed", desc: "Ongaro and Ousterhout publish Raft — a consensus algorithm designed to be understandable, as an alternative to Paxos." },
+  { year: 2013, title: "HBM — High Bandwidth Memory", category: "hardware", desc: "AMD and SK Hynix develop HBM — stacked DRAM dies connected with through-silicon vias, sitting directly on the package next to the GPU. Solves the memory bandwidth wall for accelerators." },
+  { year: 2014, title: "Swift Language", category: "languages", desc: "Apple releases Swift — a safe, fast systems language built on LLVM, replacing Objective-C for Apple platform development." },
+  { year: 2014, title: "Microsoft Catapult — FPGAs in Datacenters", category: "hardware", desc: "Microsoft deploys FPGAs across Bing's search infrastructure for neural network acceleration — one of the first large-scale FPGA deployments in a hyperscaler datacenter." },
+  { year: 2015, title: "TensorFlow Open Sourced", category: "ml", desc: "Google open sources TensorFlow — a framework for building and training neural networks at scale. Democratised deep learning research." },
+  { year: 2016, title: "Google TPU v1", category: "hardware", desc: "Google deploys its first Tensor Processing Unit internally — a custom ASIC designed specifically for neural network inference, orders of magnitude more efficient than GPUs for that workload." },
+  { year: 2017, title: "Attention Is All You Need", category: "ml", desc: "Vaswani et al. publish the Transformer paper. Replaced recurrent networks for sequence tasks and became the architecture behind every large language model." },
+  { year: 2017, title: "NVIDIA Volta and Tensor Cores", category: "hardware", desc: "NVIDIA introduces Tensor Cores in the Volta architecture — mixed-precision matrix multiply units that accelerate deep learning training dramatically." },
+  { year: 2018, title: "BERT", category: "ml", desc: "Google publishes BERT — bidirectional transformers pre-trained on large text corpora. Transformed NLP and established the pre-train/fine-tune paradigm." },
+  { year: 2019, title: "eBPF Goes Mainstream", category: "os", desc: "eBPF becomes a production tool for Linux observability and networking — allowing safe kernel-level programs without kernel modules." },
+
+  // 2020s
+  { year: 2020, title: "NVIDIA A100", category: "hardware", desc: "NVIDIA releases the A100 based on the Ampere architecture — the chip that trains most large language models. 80GB HBM2e, 312 TFLOPS of bfloat16 performance." },
+  { year: 2020, title: "Apple Silicon", category: "hardware", desc: "Apple releases the M1 chip — an ARM-based SoC that beats x86 competitors on performance per watt. Marks ARM's arrival in mainstream computing." },
+  { year: 2020, title: "GPT-3", category: "ml", desc: "OpenAI releases GPT-3 — 175 billion parameters, few-shot learning, and text generation that shocked the field. Large language models enter public consciousness." },
+  { year: 2022, title: "NVIDIA H100", category: "hardware", desc: "The H100 Hopper GPU ships with the Transformer Engine — hardware purpose-built for attention computation. Becomes the most sought-after chip in the AI boom." },
+  { year: 2022, title: "ChatGPT", category: "ml", desc: "OpenAI releases ChatGPT — a fine-tuned GPT-4 model with RLHF. Reaches 100 million users in two months, the fastest product adoption in history." },
+  { year: 2023, title: "RISC-V Goes Mainstream", category: "hardware", desc: "RISC-V adoption accelerates across embedded, mobile, and server markets — an open ISA threatening the ARM/x86 duopoly." },
+  { year: 2024, title: "LLM Compilers", category: "compilers", desc: "Research groups begin using large language models to assist with compiler optimisation passes, code generation, and program synthesis — blurring the line between ML and compilers." },
+
+];
+
+// Group by decade
+const decades: Record<string, typeof events> = {};
+events.forEach(e => {
+  const decade = Math.floor(e.year / 10) * 10;
+  const key = `${decade}s`;
+  if (!decades[key]) decades[key] = [];
+  decades[key].push(e);
+});
+
+const CATEGORY_COLORS: Record<string, string> = {
+  theory:      '#c792ea',
+  hardware:    '#f78c6c',
+  compilers:   '#00c8ff',
+  languages:   '#82aaff',
+  os:          '#00d084',
+  networking:  '#f0a500',
+  distributed: '#e8833a',
+  ml:          '#ff5370',
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  theory:      'theory',
+  hardware:    'hardware',
+  compilers:   'compilers',
+  languages:   'languages',
+  os:          'os',
+  networking:  'networking',
+  distributed: 'distributed',
+  ml:          'ml',
+};
+---
+<Base title="Timeline" description="A history of computer science from 1936 to now.">
+  <div class="timeline-page">
+
+    <!-- Header -->
+    <header class="timeline-header container--wide">
+      <p class="timeline-header__tag">// timeline</p>
+      <h1 class="timeline-header__title">A history of computer science</h1>
+      <p class="timeline-header__desc">
+        From Turing's universal machine to large language models.
+        Key papers, languages, systems, and moments that shaped computing.
+      </p>
+
+      <!-- Legend -->
+      <div class="timeline-legend">
+        {Object.entries(CATEGORY_COLORS).map(([cat, color]) => (
+          <button
+            class="legend-item"
+            data-category={cat}
+            style={`--cat-color: ${color}`}
+          >
+            <span class="legend-dot"></span>
+            <span class="legend-label">{CATEGORY_LABELS[cat]}</span>
+          </button>
+        ))}
+        <button class="legend-item legend-item--reset" id="legendReset">
+          show all
+        </button>
+      </div>
+    </header>
+
+    <!-- Timeline -->
+    <div class="timeline-wrap">
+      <div class="timeline-line"></div>
+
+      {Object.entries(decades).map(([decade, decadeEvents]) => (
+        <div class="decade-block" data-decade={decade}>
+
+          <!-- Decade marker -->
+          <div class="decade-marker">
+            <div class="decade-marker__node"></div>
+            <div class="decade-marker__label">{decade}</div>
+          </div>
+
+          <!-- Events -->
+          {decadeEvents.map((event, i) => (
+            <div
+              class={`timeline-event timeline-event--${i % 2 === 0 ? 'left' : 'right'}`}
+              data-category={event.category}
+              data-year={event.year}
+            >
+              <div class="event-connector">
+                <div
+                  class="event-dot"
+                  style={`background: ${CATEGORY_COLORS[event.category] ?? '#00c8ff'}`}
+                ></div>
+                <div
+                  class="event-line"
+                  style={`border-color: ${CATEGORY_COLORS[event.category] ?? '#00c8ff'}`}
+                ></div>
+              </div>
+              <div class="event-card">
+                <div class="event-card__head">
+                  <span
+                    class="event-card__year"
+                    style={`color: ${CATEGORY_COLORS[event.category] ?? '#00c8ff'}`}
+                  >{event.year}</span>
+                  <span
+                    class="event-card__cat"
+                    style={`color: ${CATEGORY_COLORS[event.category] ?? '#00c8ff'}; border-color: ${CATEGORY_COLORS[event.category] ?? '#00c8ff'}44`}
+                  >{CATEGORY_LABELS[event.category]}</span>
+                </div>
+                <h3 class="event-card__title">{event.title}</h3>
+                <p class="event-card__desc">{event.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      <!-- End cap -->
+      <div class="timeline-end">
+        <div class="timeline-end__node"></div>
+        <div class="timeline-end__label">// present</div>
+      </div>
+
+    </div>
+  </div>
+</Base>
+
+<script>
+// ── Scroll reveal ──
+const events = document.querySelectorAll('.timeline-event');
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      io.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+events.forEach(e => io.observe(e));
+
+// Decade markers
+const decades = document.querySelectorAll('.decade-marker');
+const dIo = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      dIo.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.5 });
+decades.forEach(d => dIo.observe(d));
+
+// ── Category filter ──
+const legendBtns = document.querySelectorAll('.legend-item[data-category]');
+const resetBtn   = document.getElementById('legendReset');
+let activeCategory: string | null = null;
+
+function applyFilter(cat: string | null) {
+  activeCategory = cat;
+  events.forEach(e => {
+    const el = e as HTMLElement;
+    if (!cat || el.dataset.category === cat) {
+      el.style.opacity = '1';
+      el.style.pointerEvents = 'auto';
+    } else {
+      el.style.opacity = '0.12';
+      el.style.pointerEvents = 'none';
+    }
+  });
+  legendBtns.forEach(b => {
+    const btn = b as HTMLElement;
+    btn.classList.toggle('active', btn.dataset.category === cat);
+  });
+  if (resetBtn) resetBtn.style.opacity = cat ? '1' : '0.4';
+}
+
+legendBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const cat = (btn as HTMLElement).dataset.category ?? null;
+    applyFilter(activeCategory === cat ? null : cat);
+  });
+});
+
+resetBtn?.addEventListener('click', () => applyFilter(null));
+applyFilter(null);
+</script>
+
+<style>
+.timeline-page { min-height: 100vh; padding-bottom: 8rem; }
+
+/* ── Header ── */
+.timeline-header {
+  padding: 5rem 0 3rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+.timeline-header__tag {
+  font-family: var(--mono); font-size: 0.7rem; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 1rem; opacity: 0.7;
+}
+.timeline-header__title {
+  font-family: var(--mono); font-size: clamp(1.8rem, 3vw, 2.8rem);
+  color: var(--heading); letter-spacing: -0.03em; margin-bottom: 0.75rem;
+}
+.timeline-header__desc {
+  color: var(--text-dim); font-size: 0.95rem; line-height: 1.7;
+  max-width: 560px; margin-bottom: 2rem;
+}
+
+/* Legend */
+.timeline-legend {
+  display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-family: var(--mono); font-size: 0.68rem; color: var(--text-dim);
+  background: none; border: 1px solid var(--border); border-radius: 3px;
+  padding: 0.3rem 0.65rem; cursor: pointer; transition: 0.2s;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.legend-item:hover { border-color: var(--cat-color, var(--accent)); color: var(--cat-color, var(--accent)); }
+.legend-item.active {
+  background: color-mix(in srgb, var(--cat-color, var(--accent)) 12%, transparent);
+  border-color: var(--cat-color, var(--accent));
+  color: var(--cat-color, var(--accent));
+}
+.legend-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--cat-color, var(--accent));
+}
+.legend-item--reset { color: var(--text-dim); opacity: 0.4; }
+.legend-item--reset:hover { opacity: 1; color: var(--text-dim); border-color: var(--text-dim); }
+
+/* ── Timeline wrap ── */
+.timeline-wrap {
+  position: relative;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 4rem 2rem 0;
+}
+
+/* The vertical line */
+.timeline-line {
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    var(--border) 3%,
+    var(--border) 97%,
+    transparent 100%
+  );
+}
+.timeline-line::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    rgba(0,200,255,0.15) 30%,
+    rgba(0,200,255,0.15) 70%,
+    transparent 100%
+  );
+  animation: line-pulse 4s ease-in-out infinite;
+}
+@keyframes line-pulse {
+  0%,100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+
+/* ── Decade markers ── */
+.decade-marker {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  margin: 3rem 0 2rem; z-index: 2;
+  opacity: 0; transform: scale(0.9);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.decade-marker.visible { opacity: 1; transform: scale(1); }
+
+.decade-marker__node {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--bg); border: 2px solid var(--accent);
+  box-shadow: 0 0 16px rgba(0,200,255,0.5), 0 0 40px rgba(0,200,255,0.2);
+  position: absolute; left: 50%; transform: translateX(-50%);
+  z-index: 1;
+}
+.decade-marker__label {
+  font-family: var(--mono); font-size: 0.75rem; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.2em;
+  background: var(--bg); padding: 0.3rem 1rem; border-radius: 2px;
+  border: 1px solid var(--border);
+  position: relative; z-index: 3;
+}
+
+/* ── Events ── */
+.timeline-event {
+  display: flex; align-items: flex-start;
+  margin: 1.5rem 0; position: relative; z-index: 1;
+  opacity: 0; transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.timeline-event.visible { opacity: 1; transform: translateY(0); }
+
+/* Left events — card on left, connector pointing right */
+.timeline-event--left {
+  flex-direction: row-reverse;
+  padding-right: calc(50% + 24px);
+}
+.timeline-event--left .event-connector { flex-direction: row-reverse; }
+.timeline-event--left .event-line { border-right: none; border-left: 1px solid; }
+
+/* Right events — card on right, connector pointing left */
+.timeline-event--right {
+  padding-left: calc(50% + 24px);
+}
+
+.event-connector {
+  display: flex; align-items: center; gap: 0;
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  width: 48px;
+}
+.event-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: 0 0 8px currentColor;
+  position: absolute; left: 50%; transform: translateX(-50%);
+  top: 16px;
+}
+.event-line {
+  position: absolute; top: 20px;
+  height: 1px; width: 22px;
+  border-top: 1px solid;
+}
+.timeline-event--left  .event-line { right: calc(50% + 4px); }
+.timeline-event--right .event-line { left: calc(50% + 4px); }
+
+/* Card */
+.event-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1rem 1.25rem;
+  max-width: 340px; width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.event-card:hover {
+  border-color: rgba(0,200,255,0.3);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+.event-card__head {
+  display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;
+}
+.event-card__year {
+  font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em;
+}
+.event-card__cat {
+  font-family: var(--mono); font-size: 0.6rem; text-transform: uppercase;
+  letter-spacing: 0.1em; border: 1px solid; border-radius: 2px;
+  padding: 0.1rem 0.4rem;
+}
+.event-card__title {
+  font-family: var(--mono); font-size: 0.85rem; color: var(--heading);
+  font-weight: 700; line-height: 1.3; margin-bottom: 0.5rem; letter-spacing: -0.01em;
+}
+.event-card__desc {
+  font-size: 0.8rem; color: var(--text-dim); line-height: 1.6; margin: 0;
+}
+
+/* ── End cap ── */
+.timeline-end {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 2rem 0 4rem; gap: 0.75rem;
+}
+.timeline-end__node {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent); opacity: 0.4;
+  box-shadow: 0 0 12px rgba(0,200,255,0.4);
+  animation: end-pulse 3s ease-in-out infinite;
+}
+@keyframes end-pulse { 0%,100%{opacity:0.3;} 50%{opacity:0.7;} }
+.timeline-end__label {
+  font-family: var(--mono); font-size: 0.68rem; color: var(--text-dim);
+  letter-spacing: 0.15em; opacity: 0.4;
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .timeline-line { left: 20px; }
+  .timeline-event--left,
+  .timeline-event--right {
+    padding-left: 52px; padding-right: 0;
+    flex-direction: row;
+  }
+  .timeline-event--left .event-connector,
+  .timeline-event--right .event-connector { left: 20px; }
+  .timeline-event--left .event-line,
+  .timeline-event--right .event-line {
+    left: calc(100% + 4px); right: auto;
+    border-left: none; border-right: none; border-top: 1px solid;
+    width: 16px;
+  }
+  .event-card { max-width: 100%; }
+  .decade-marker__node { left: 20px; transform: translateX(-50%); }
+  .decade-marker { justify-content: flex-start; padding-left: 42px; }
+}
+</style>

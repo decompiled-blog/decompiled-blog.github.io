@@ -1,0 +1,54 @@
+---
+import Base from '../layouts/Base.astro';
+
+const projects = [
+  {
+    name: 'Project Alpha',
+    description: 'A short description of what this project does and why it exists. Replace with your own.',
+    tags: ['rust', 'systems'],
+    url: 'https://github.com/yourusername/project-alpha',
+    status: 'active',
+  },
+  {
+    name: 'Project Beta',
+    description: 'Another project. What problem does it solve? What did you learn building it?',
+    tags: ['python', 'ml'],
+    url: 'https://github.com/yourusername/project-beta',
+    status: 'wip',
+  },
+];
+---
+<Base title="Projects">
+  <div class="container" style="padding-top:4rem;padding-bottom:6rem;">
+    <h1 style="margin-bottom:0.5rem;">Projects</h1>
+    <p style="color:var(--text-dim);margin-bottom:3rem;">
+      Things I've built or am building.
+    </p>
+
+    <p class="section-label">All projects</p>
+
+    <div class="project-grid">
+      {projects.map(project => (
+        <div class="project-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+            <div class="project-card__name">{project.name}</div>
+            {project.status === 'wip' && (
+              <span class="tag">WIP</span>
+            )}
+          </div>
+          <p class="project-card__desc">{project.description}</p>
+          <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+            {project.tags.map(tag => <span class="tag">{tag}</span>)}
+          </div>
+          <a href={project.url} class="project-card__link" target="_blank" rel="noopener">
+            View on GitHub
+          </a>
+        </div>
+      ))}
+    </div>
+
+    <p style="margin-top:2rem;font-family:var(--mono);font-size:0.8rem;color:var(--text-dim);">
+      // Edit src/pages/projects.astro to add your own projects
+    </p>
+  </div>
+</Base>

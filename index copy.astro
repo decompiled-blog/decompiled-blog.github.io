@@ -1,0 +1,395 @@
+---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const source = (await getCollection('source', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 3);
+
+const notes = (await getCollection('notes', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 3);
+
+function formatDate(date) {
+  return new Date(date).toLocaleDateString('en-GB', {
+    year: 'numeric', month: 'short', day: '2-digit'
+  });
+}
+---
+<Base>
+
+  <!-- AST HERO -->
+  <section class="hero">
+    <canvas id="astCanvas" class="ast-canvas"></canvas>
+    <div class="hero__content">
+      <p class="hero__tag">// decompiled</p>
+      <h1 class="hero__title">
+        Taking things apart<br/>
+        <span class="accent">to see how they work.</span>
+      </h1>
+      <p class="hero__desc">
+        Deep technical writing on open source codebases, research papers,
+        and CS fundamentals. No black boxes.
+      </p>
+      <div class="hero__btns">
+        <a href="/source" class="btn btn--primary">Read the source</a>
+        <a href="/notes" class="btn btn--ghost">Notes →</a>
+      </div>
+    </div>
+    <div class="hero__scroll">
+      <span class="hero__scroll-text">scroll</span>
+      <div class="hero__scroll-line"></div>
+    </div>
+  </section>
+
+  <!-- SPLIT SCREEN -->
+  <section class="split">
+    <div class="split__left">
+      <p class="split__label">// input — raw binary</p>
+      <div class="split__hex" id="splitHex"></div>
+    </div>
+    <div class="split__divider">
+      <div class="split__divider-label">decompile()</div>
+    </div>
+    <div class="split__right">
+      <p class="split__label accent">// output — understood</p>
+      <div class="split__code">
+        <div class="split__code-comment">{'// update_curr — the heart of CFS'}</div>
+        <div class="split__code-line"><span class="tk">static</span> <span class="tf">void</span> <span class="tv">update_curr</span><span class="tp">(struct cfs_rq *cfs_rq) {'{'}</span></div>
+        <div class="split__code-line"><span class="tf">  u64</span> <span class="tv"> delta</span><span class="tp"> = </span><span class="tv">now</span><span class="tp"> - </span><span class="tv">curr</span><span class="tp">->exec_start;</span></div>
+        <div class="split__code-line"><span class="tv">  curr</span><span class="tp">->vruntime += </span><span class="tv">calc_delta_fair</span><span class="tp">(delta, curr);</span></div>
+        <div class="split__code-comment">{'  // fairness invariant — least served runs next'}</div>
+        <div class="split__code-line"><span class="tp">{'}'}</span></div>
+      </div>
+      <p class="split__caption">
+        We read the source so you understand it.
+        Every function, every invariant, explained.
+      </p>
+    </div>
+  </section>
+
+  <!-- POSTS -->
+  <section class="posts-section">
+    <div class="container--wide">
+
+      {source.length > 0 && (
+        <div class="posts-group">
+          <div class="posts-group__header">
+            <p class="section-label">Latest from source</p>
+            <a href="/source" class="posts-group__all">All source →</a>
+          </div>
+          <div class="post-grid">
+            {source.map(post => (
+              <a href={`/source/${post.id}`} class="post-card">
+                <div>
+                  <div class="post-card__title">{post.data.title}</div>
+                  {post.data.description && <div class="post-card__desc">{post.data.description}</div>}
+                  {post.data.tags && (
+                    <div class="post-card__tags">
+                      {post.data.tags.map(tag => <span class="tag">{tag}</span>)}
+                    </div>
+                  )}
+                </div>
+                <div class="post-card__meta">
+                  <div>{formatDate(post.data.date)}</div>
+                  {post.data.readingTime && <div>{post.data.readingTime} min</div>}
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {notes.length > 0 && (
+        <div class="posts-group" style="margin-top:4rem;">
+          <div class="posts-group__header">
+            <p class="section-label">Latest from notes</p>
+            <a href="/notes" class="posts-group__all">All notes →</a>
+          </div>
+          <div class="post-grid">
+            {notes.map(post => (
+              <a href={`/notes/${post.id}`} class="post-card">
+                <div>
+                  <div class="post-card__title">{post.data.title}</div>
+                  {post.data.description && <div class="post-card__desc">{post.data.description}</div>}
+                  {post.data.tags && (
+                    <div class="post-card__tags">
+                      {post.data.tags.map(tag => <span class="tag">{tag}</span>)}
+                    </div>
+                  )}
+                </div>
+                <div class="post-card__meta">
+                  <div>{formatDate(post.data.date)}</div>
+                  {post.data.readingTime && <div>{post.data.readingTime} min</div>}
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {source.length === 0 && notes.length === 0 && (
+        <div class="empty-state">
+          <p class="empty-state__text">// no posts yet</p>
+        </div>
+      )}
+
+    </div>
+  </section>
+
+</Base>
+
+<style>
+/* ── Hero ── */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  background: #070a0f;
+}
+.ast-canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; z-index: 0;
+}
+.hero__content {
+  position: relative; z-index: 2;
+  max-width: 640px; padding: 2rem;
+  background: radial-gradient(ellipse 80% 70% at 50% 50%, rgba(7,10,15,0.8) 30%, transparent 100%);
+  border-radius: 50%;
+}
+.hero__tag {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 1.5rem; opacity: 0.7;
+}
+.hero__title {
+  font-family: var(--mono); font-size: clamp(2.4rem, 5vw, 4rem);
+  color: var(--heading); line-height: 1.05; letter-spacing: -0.04em; margin-bottom: 1.25rem;
+}
+.hero__title .accent { color: var(--accent); }
+.hero__desc {
+  color: var(--text-dim); font-size: 1rem; line-height: 1.7; margin-bottom: 2rem;
+}
+.hero__btns { display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap; }
+.btn--primary {
+  font-family: var(--mono); font-size: 0.75rem; text-transform: uppercase;
+  letter-spacing: 0.1em; padding: 0.65rem 1.25rem; border-radius: 3px;
+  text-decoration: none; transition: 0.2s;
+  background: var(--accent); color: #070a0f; border: 1px solid var(--accent);
+}
+.btn--primary:hover { background: transparent; color: var(--accent); opacity: 1; }
+
+.hero__scroll {
+  position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem; z-index: 2;
+  animation: scroll-fade 1s ease 3s both;
+}
+@keyframes scroll-fade {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.hero__scroll-text {
+  font-family: var(--mono); font-size: 0.62rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.2em; opacity: 0.4;
+}
+.hero__scroll-line {
+  width: 1px; height: 40px;
+  background: linear-gradient(to bottom, var(--text-dim), transparent);
+  opacity: 0.3;
+  animation: scroll-line 2s ease-in-out 4s infinite;
+}
+@keyframes scroll-line {
+  0%   { transform: scaleY(0); transform-origin: top; }
+  50%  { transform: scaleY(1); transform-origin: top; }
+  51%  { transform: scaleY(1); transform-origin: bottom; }
+  100% { transform: scaleY(0); transform-origin: bottom; }
+}
+
+/* ── Split ── */
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  min-height: 420px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.split__left {
+  background: #06080d; padding: 3rem; overflow: hidden;
+}
+.split__right {
+  background: var(--bg); padding: 3rem;
+  display: flex; flex-direction: column; justify-content: center; gap: 1.5rem;
+}
+.split__label {
+  font-family: var(--mono); font-size: 0.65rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 1.5rem; opacity: 0.5;
+}
+.split__label.accent { color: var(--accent); opacity: 0.7; }
+.split__hex {
+  font-family: var(--mono); font-size: 0.68rem; line-height: 1.75; color: #1e3050; overflow: hidden;
+}
+.split__hex .addr { color: #141c28; }
+.split__hex .hot  { color: var(--accent); opacity: 0.4; }
+.split__divider {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(to bottom, transparent, var(--accent), transparent);
+  box-shadow: 0 0 24px rgba(0,200,255,0.2);
+  position: relative;
+}
+.split__divider-label {
+  font-family: var(--mono); font-size: 0.62rem; color: var(--accent);
+  writing-mode: vertical-rl; letter-spacing: 0.15em; padding: 1rem 0;
+  white-space: nowrap; text-shadow: 0 0 12px var(--accent);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 3px;
+}
+.split__code {
+  font-family: var(--mono); font-size: 0.8rem; line-height: 1.85;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 1.25rem;
+}
+.tk { color: #c792ea; }
+.tf { color: #82aaff; }
+.tv { color: #eeffff; }
+.tp { color: var(--text-dim); }
+.split__code-comment { color: #3a5a6a; font-style: italic; }
+.split__code-line { display: block; }
+.split__caption {
+  font-size: 0.9rem; color: var(--text-dim); line-height: 1.6; font-style: italic;
+}
+
+/* ── Posts ── */
+.posts-section { padding: 5rem 0 8rem; }
+.posts-group__header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;
+}
+.posts-group__all {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim);
+  text-decoration: none; transition: color 0.2s;
+}
+.posts-group__all:hover { color: var(--accent); }
+.empty-state {
+  padding: 3rem; border: 1px solid var(--border); border-radius: 4px; text-align: center;
+}
+.empty-state__text { font-family: var(--mono); font-size: 0.8rem; color: var(--text-dim); margin: 0; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .split { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+  .split__divider {
+    width: 100%; height: 1px; flex-direction: row;
+    background: linear-gradient(to right, transparent, var(--accent), transparent);
+  }
+  .split__divider-label { writing-mode: horizontal-tb; padding: 0 1rem; }
+}
+</style>
+
+<script>
+// AST Canvas
+const canvas = document.getElementById('astCanvas');
+if (canvas) {
+  const ctx = canvas.getContext('2d');
+  let W, H, nodes = [], edges = [], t = 0;
+  const LABELS = ['Program','FuncDecl','BlockStmt','ExprStmt','CallExpr','BinaryExpr',
+    'Identifier','Literal','ReturnStmt','IfStmt','ForStmt','VarDecl','AssignExpr',
+    'MemberExpr','UnaryExpr','ArrayExpr','ArrowFunc','ImportDecl','Param','Type'];
+
+  function build() {
+    nodes = []; edges = [];
+    const cx = W/2, cy = H/2;
+    nodes.push({id:0,x:cx,y:cy,label:'Program',r:24,born:0,depth:0});
+    let id=1;
+    const q=[{pid:0,x:cx,y:cy,depth:1,a:-Math.PI/2}];
+    while(q.length&&id<45){
+      const{pid,x,y,depth,a}=q.shift();
+      if(depth>5)continue;
+      const cnt=depth===1?5:depth===2?3:Math.random()<.5?2:1;
+      const spread=depth===1?Math.PI*2:Math.PI*.7;
+      const base=depth===1?0:a-spread/2;
+      for(let i=0;i<cnt&&id<45;i++){
+        const ang=base+(i/Math.max(cnt-1,1))*spread;
+        const d=90+(5-depth)*20+Math.random()*25;
+        const nx=x+Math.cos(ang)*d, ny=y+Math.sin(ang)*d;
+        const r=Math.max(7,22-depth*3.5);
+        if(nx<30||nx>W-30||ny<30||ny>H-30){id++;continue;}
+        nodes.push({id,x:nx,y:ny,label:LABELS[id%LABELS.length],r,born:id*70,depth});
+        edges.push({from:pid,to:id,born:id*70});
+        q.push({pid:id,x:nx,y:ny,depth:depth+1,a:ang});
+        id++;
+      }
+    }
+  }
+
+  function alpha(x,y,born,ms){
+    if(ms<born)return 0;
+    const age=Math.min(1,(ms-born)/500);
+    const d=Math.sqrt((x-W/2)**2+(y-H/2)**2);
+    const max=Math.sqrt(W*W+H*H)/2;
+    const fade=Math.max(0,Math.min(1,(d-max*.15)/(max*.28)));
+    return age*fade*.65;
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const ms=t*16;
+    edges.forEach(e=>{
+      const f=nodes.find(n=>n.id===e.from),to=nodes.find(n=>n.id===e.to);
+      if(!f||!to)return;
+      const a=alpha((f.x+to.x)/2,(f.y+to.y)/2,e.born,ms);
+      if(a<=0)return;
+      ctx.beginPath();ctx.moveTo(f.x,f.y);ctx.lineTo(to.x,to.y);
+      ctx.strokeStyle=`rgba(0,200,255,${a*.35})`;ctx.lineWidth=1;ctx.stroke();
+    });
+    nodes.forEach(n=>{
+      const a=alpha(n.x,n.y,n.born,ms);
+      if(a<=0)return;
+      if(n.depth<=1){
+        const g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r*3);
+        g.addColorStop(0,`rgba(0,200,255,${a*.08})`);g.addColorStop(1,'transparent');
+        ctx.beginPath();ctx.arc(n.x,n.y,n.r*3,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+      }
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(7,10,15,${a*.9})`;ctx.fill();
+      ctx.strokeStyle=n.depth===0?`rgba(0,200,255,${a})`:`rgba(0,200,255,${a*.45})`;
+      ctx.lineWidth=n.depth===0?2:1;ctx.stroke();
+      if(n.r>9){
+        const s=n.label.replace('Statement','').replace('Stmt','').replace('Expression','').replace('Expr','').replace('Declaration','').replace('Decl','');
+        ctx.font=`${Math.max(7,n.r*.48)}px 'Space Mono',monospace`;
+        ctx.fillStyle=n.depth===0?`rgba(0,200,255,${a})`:`rgba(100,160,190,${a*.85})`;
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(s,n.x,n.y);
+      }
+    });
+    t++;if(t>700)t=0;
+    requestAnimationFrame(draw);
+  }
+
+  function resize(){
+    W=canvas.width=canvas.offsetWidth;
+    H=canvas.height=canvas.offsetHeight;
+    build();
+  }
+  window.addEventListener('resize',resize);
+  resize();draw();
+}
+
+// Split hex
+const hex=document.getElementById('splitHex');
+if(hex){
+  const elf=['7f','45','4c','46','02','01','01','00'];
+  let html='';
+  for(let r=0;r<14;r++){
+    const addr=(r*16).toString(16).padStart(8,'0');
+    let b='',a='';
+    for(let i=0;i<16;i++){
+      const isE=r===0&&i<8;
+      const v=isE?parseInt(elf[i],16):Math.floor(Math.random()*256);
+      b+=isE?`<span class="hot">${v.toString(16).padStart(2,'0')}</span> `:`${v.toString(16).padStart(2,'0')} `;
+      a+=v>=32&&v<127?String.fromCharCode(v):'.';
+    }
+    html+=`<div style="display:flex;gap:.75rem;line-height:1.75"><span class="addr">${addr}</span><span style="flex:1">${b}</span><span style="color:#0e1828;min-width:100px">${a}</span></div>`;
+  }
+  hex.innerHTML=html;
+}
+</script>

@@ -1,0 +1,364 @@
+---
+// SearchModal.astro — drop into src/components/
+// Adds a Ctrl+K / Cmd+K search modal to any page it's included in.
+// Include it once in src/layouts/Base.astro just before </body>
+
+import { getCollection } from 'astro:content';
+
+const source = await getCollection('source', ({ data }) => !data.draft);
+const notes  = await getCollection('notes',  ({ data }) => !data.draft);
+
+const searchIndex = [...source, ...notes].map(post => ({
+  title:       post.data.title,
+  description: post.data.description ?? '',
+  tags:        post.data.tags ?? [],
+  slug:        post.id,
+  collection:  post.collection,
+  date:        post.data.date.toISOString().slice(0, 10),
+  readingTime: post.data.readingTime ?? null,
+}));
+---
+
+<!-- Modal overlay -->
+<div class="search-overlay" id="searchOverlay" aria-hidden="true">
+  <div class="search-modal" id="searchModal" role="dialog" aria-label="Search">
+
+    <div class="search-input-wrap">
+      <span class="search-icon">⌕</span>
+      <input
+        type="text"
+        id="searchInput"
+        class="search-input"
+        placeholder="Search posts, topics, tags..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <kbd class="search-esc">esc</kbd>
+    </div>
+
+    <div class="search-results" id="searchResults">
+      <div class="search-empty" id="searchEmpty">
+        <p class="search-empty__text">// start typing to search</p>
+      </div>
+      <div class="search-hits" id="searchHits" style="display:none"></div>
+      <div class="search-no-results" id="searchNoResults" style="display:none">
+        <p class="search-empty__text">// no results found</p>
+      </div>
+    </div>
+
+    <div class="search-footer">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>esc</kbd> close</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- Trigger hint in nav (optional, shown via JS) -->
+<button class="search-trigger" id="searchTrigger" aria-label="Search">
+  <span class="search-trigger__icon">⌕</span>
+  <span class="search-trigger__label">Search</span>
+  <kbd class="search-trigger__kbd">Ctrl K</kbd>
+</button>
+
+<script define:vars={{ searchIndex }}>
+
+// ── Fuse.js loaded from CDN ──
+const fuseScript = document.createElement('script');
+fuseScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js';
+document.head.appendChild(fuseScript);
+
+fuseScript.onload = () => {
+  const fuse = new Fuse(searchIndex, {
+    keys: [
+      { name: 'title',       weight: 0.6 },
+      { name: 'description', weight: 0.25 },
+      { name: 'tags',        weight: 0.15 },
+    ],
+    threshold: 0.35,
+    includeMatches: true,
+    includeScore: true,
+    minMatchCharLength: 2,
+  });
+
+  const overlay      = document.getElementById('searchOverlay');
+  const modal        = document.getElementById('searchModal');
+  const input        = document.getElementById('searchInput');
+  const hitsEl       = document.getElementById('searchHits');
+  const emptyEl      = document.getElementById('searchEmpty');
+  const noResultsEl  = document.getElementById('searchNoResults');
+  const trigger      = document.getElementById('searchTrigger');
+
+  let activeIndex = -1;
+  let currentHits = [];
+
+  // ── Open / close ──
+  function open() {
+    overlay.setAttribute('aria-hidden', 'false');
+    overlay.classList.add('visible');
+    input.value = '';
+    input.focus();
+    showEmpty();
+    activeIndex = -1;
+    document.body.style.overflow = 'hidden';
+  }
+
+  function close() {
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.classList.remove('visible');
+    document.body.style.overflow = '';
+    activeIndex = -1;
+  }
+
+  function showEmpty() {
+    emptyEl.style.display      = 'block';
+    hitsEl.style.display       = 'none';
+    noResultsEl.style.display  = 'none';
+  }
+
+  // ── Keyboard shortcut ──
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      overlay.classList.contains('visible') ? close() : open();
+    }
+    if (e.key === 'Escape') close();
+  });
+
+  overlay.addEventListener('mousedown', e => {
+    if (e.target === overlay) close();
+  });
+
+  trigger?.addEventListener('click', open);
+
+  // ── Search ──
+  input.addEventListener('input', () => {
+    const q = input.value.trim();
+    if (!q) { showEmpty(); activeIndex = -1; return; }
+
+    const results = fuse.search(q, { limit: 10 });
+    currentHits = results;
+
+    if (results.length === 0) {
+      emptyEl.style.display     = 'none';
+      hitsEl.style.display      = 'none';
+      noResultsEl.style.display = 'block';
+      return;
+    }
+
+    emptyEl.style.display     = 'none';
+    noResultsEl.style.display = 'none';
+    hitsEl.style.display      = 'block';
+    activeIndex = -1;
+
+    hitsEl.innerHTML = results.map((r, i) => {
+      const p = r.item;
+      const collectionLabel = p.collection === 'source' ? 'source' : 'notes';
+      const collectionColor = p.collection === 'source' ? '#00c8ff' : '#00d084';
+      const tagsHtml = p.tags.slice(0, 3).map(t =>
+        `<span class="hit-tag">${t}</span>`
+      ).join('');
+
+      return `
+        <a
+          href="/${p.collection}/${p.id}"
+          class="search-hit"
+          data-index="${i}"
+          tabindex="-1"
+        >
+          <div class="hit-main">
+            <div class="hit-title">${highlight(p.title, r.matches)}</div>
+            ${p.description
+              ? `<div class="hit-desc">${highlight(p.description, r.matches)}</div>`
+              : ''}
+            ${tagsHtml ? `<div class="hit-tags">${tagsHtml}</div>` : ''}
+          </div>
+          <div class="hit-meta">
+            <span class="hit-collection" style="color:${collectionColor}">${collectionLabel}</span>
+            ${p.readingTime ? `<span>${p.readingTime} min</span>` : ''}
+          </div>
+        </a>
+      `;
+    }).join('');
+  });
+
+  // ── Highlight matched characters ──
+  function highlight(text, matches) {
+    if (!matches) return text;
+    const match = matches.find(m => m.value === text);
+    if (!match) return text;
+
+    let result = '';
+    let lastIdx = 0;
+    match.indices.forEach(([start, end]) => {
+      result += escape(text.slice(lastIdx, start));
+      result += `<mark class="hit-mark">${escape(text.slice(start, end+1))}</mark>`;
+      lastIdx = end + 1;
+    });
+    result += escape(text.slice(lastIdx));
+    return result;
+  }
+
+  function escape(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Keyboard navigation ──
+  input.addEventListener('keydown', e => {
+    const hits = hitsEl.querySelectorAll('.search-hit');
+    if (!hits.length) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIndex = (activeIndex + 1) % hits.length;
+      updateActive(hits);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIndex = (activeIndex - 1 + hits.length) % hits.length;
+      updateActive(hits);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIndex >= 0) hits[activeIndex].click();
+      else if (hits.length > 0) hits[0].click();
+    }
+  });
+
+  function updateActive(hits) {
+    hits.forEach((h, i) => {
+      h.classList.toggle('active', i === activeIndex);
+      if (i === activeIndex) h.scrollIntoView({ block: 'nearest' });
+    });
+  }
+};
+</script>
+
+<style>
+/* ── Trigger button (sits in nav) ── */
+.search-trigger {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim);
+  background: none; border: 1px solid var(--border); border-radius: 3px;
+  padding: 0.3rem 0.65rem; cursor: pointer; transition: 0.2s;
+  letter-spacing: 0.05em;
+}
+.search-trigger:hover { border-color: var(--accent); color: var(--accent); }
+.search-trigger__icon { font-size: 0.9rem; opacity: 0.7; }
+.search-trigger__kbd  { font-size: 0.62rem; opacity: 0.4; }
+
+/* ── Overlay ── */
+.search-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(5, 7, 12, 0.85);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: clamp(4rem, 12vh, 8rem);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.search-overlay.visible {
+  opacity: 1; pointer-events: all;
+}
+
+/* ── Modal ── */
+.search-modal {
+  width: 100%; max-width: 620px; margin: 0 1rem;
+  background: #0d1420;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,200,255,0.06);
+  overflow: hidden;
+  transform: translateY(-8px);
+  transition: transform 0.15s ease;
+}
+.search-overlay.visible .search-modal { transform: translateY(0); }
+
+/* ── Input ── */
+.search-input-wrap {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.search-icon {
+  font-size: 1.1rem; color: var(--text-dim); opacity: 0.5; flex-shrink: 0;
+}
+.search-input {
+  flex: 1; background: none; border: none; outline: none;
+  font-family: var(--mono); font-size: 0.95rem; color: var(--heading);
+  padding: 1.1rem 0; caret-color: var(--accent);
+}
+.search-input::placeholder { color: var(--text-dim); opacity: 0.4; }
+.search-esc {
+  font-family: var(--mono); font-size: 0.62rem; color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 3px; padding: 0.2rem 0.4rem;
+  opacity: 0.5; flex-shrink: 0;
+}
+
+/* ── Results ── */
+.search-results {
+  max-height: 420px; overflow-y: auto;
+}
+.search-results::-webkit-scrollbar { width: 4px; }
+.search-results::-webkit-scrollbar-track { background: transparent; }
+.search-results::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.search-empty, .search-no-results {
+  padding: 2.5rem 1.5rem; text-align: center;
+}
+.search-empty__text {
+  font-family: var(--mono); font-size: 0.75rem; color: var(--text-dim); opacity: 0.4; margin: 0;
+}
+
+/* ── Hit ── */
+.search-hit {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+  padding: 0.9rem 1.25rem; text-decoration: none;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.search-hit:last-child { border-bottom: none; }
+.search-hit:hover, .search-hit.active {
+  background: rgba(0,200,255,0.05);
+}
+.search-hit.active .hit-title { color: var(--accent); }
+
+.hit-main { flex: 1; min-width: 0; }
+.hit-title {
+  font-family: var(--mono); font-size: 0.82rem; color: var(--text);
+  line-height: 1.4; margin-bottom: 0.3rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hit-desc {
+  font-size: 0.78rem; color: var(--text-dim); line-height: 1.4;
+  margin-bottom: 0.4rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hit-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.hit-tag {
+  font-family: var(--mono); font-size: 0.6rem; color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 2px; padding: 0.1rem 0.35rem;
+}
+
+.hit-meta {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem;
+  flex-shrink: 0; font-family: var(--mono); font-size: 0.65rem; color: var(--text-dim);
+}
+.hit-collection { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.62rem; }
+
+.hit-mark {
+  background: rgba(0,200,255,0.18); color: var(--accent);
+  border-radius: 2px; padding: 0 1px;
+}
+
+/* ── Footer ── */
+.search-footer {
+  display: flex; gap: 1.25rem; padding: 0.6rem 1.25rem;
+  border-top: 1px solid var(--border); background: #090e18;
+  font-family: var(--mono); font-size: 0.62rem; color: var(--text-dim); opacity: 0.5;
+}
+.search-footer kbd {
+  border: 1px solid var(--border); border-radius: 2px;
+  padding: 0.1rem 0.3rem; font-family: var(--mono); font-size: 0.6rem;
+  color: var(--text-dim); background: var(--bg2); margin-right: 0.2rem;
+}
+</style>

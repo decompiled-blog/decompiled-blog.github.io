@@ -1,519 +1,591 @@
 ---
+import Base from '../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const source = (await getCollection('source', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 3);
+
+const notes = (await getCollection('notes', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 3);
+
+function formatDate(date) {
+  return new Date(date).toLocaleDateString('en-GB', {
+    year: 'numeric', month: 'short', day: '2-digit'
+  });
+}
 ---
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Decompiled</title>
-  <meta name="description" content="Deep dives into codebases, research papers, and the fundamentals behind them." />
+<Base>
 
-  <meta property="og:title" content="Decompiled" />
-  <meta property="og:description" content="Understanding systems by taking them apart." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://decompiled-blog.github.io/" />
-  <meta property="og:image" content="https://decompiled-blog.github.io/og-image.png" />
-
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
-
-  <style>
-    :root {
-      --bg:     #0b1b2b;
-      --text:   #e5e7eb;
-      --muted:  #9ca3af;
-      --accent: #3b82f6;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding-top: 2rem;
-      padding-bottom: 2rem;
-      padding-left: max(1rem, env(safe-area-inset-left));
-      padding-right: max(1rem, env(safe-area-inset-right));
-    }
-
-    .container {
-      width: 100%;
-      max-width: 680px;
-      padding-inline: 0.5rem;
-    }
-
-    @media (max-width: 640px) {
-      body {
-        padding-left: max(1.5rem, env(safe-area-inset-left));
-        padding-right: max(1.5rem, env(safe-area-inset-right));
-      }
-
-      .container {
-        padding-inline: 1rem;
-      }
-    }
-
-    .logo {
-      font-family: 'Space Mono', monospace;
-      font-size: 1.2rem;
-      color: var(--muted);
-      margin-bottom: 1rem;
-    }
-
-    h1 {
-      font-family: 'Space Mono', monospace;
-      font-size: clamp(1.4rem, 4vw, 2rem);
-      line-height: 1.3;
-      margin: 0 0 1rem;
-    }
-
-    .tagline {
-      font-size: 1.1rem;
-      margin-bottom: 2rem;
-    }
-
-    .status {
-      font-family: 'Space Mono', monospace;
-      color: var(--muted);
-      margin-bottom: 0rem;
-    }
-
-    /* ── Allocator ── */
-    .alloc-wrap {
-      margin-bottom: 2rem;
-    }
-
-    .alloc-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.5rem;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .alloc-title {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--muted);
-    }
-
-    .alloc-legend {
-      display: flex;
-      gap: 0.85rem;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-      font-family: 'Space Mono', monospace;
-      font-size: 0.6rem;
-      color: var(--muted);
-    }
-
-    .legend-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 1px;
-      flex-shrink: 0;
-    }
-
-    /*
-      Key fix: the wrapper is block-level and constrained to the container.
-      The canvas is set via JS to exactly match the wrapper's clientWidth —
-      never wider, so it can't overflow on mobile.
-    */
-    .alloc-canvas-wrap {
-      width: 100%;
-      display: block;
-      border: 1px solid #1e3a5a;
-      border-radius: 3px;
-      background: #0d2340;
-      overflow: hidden; /* belt-and-suspenders */
-    }
-
-    #allocCanvas {
-      display: block;
-      /* JS sets width/height attributes and style */
-    }
-
-    .alloc-stats {
-      display: flex;
-      gap: 1.5rem;
-      margin-top: 0.75rem;
-      flex-wrap: wrap;
-    }
-
-    .stat__label {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.6rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .stat__val {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.85rem;
-      color: var(--text);
-    }
-
-    .alloc-ticker {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.65rem;
-      color: var(--muted);
-      margin-top: 0.5rem;
-      height: 1.2em;
-      overflow: hidden;
-    }
-
-    .alloc-ticker span {
-      display: inline-block;
-      animation: tick-in 0.2s ease;
-    }
-
-    :global(.tick-malloc) { color: #60a5fa; }
-    :global(.tick-free)   { color: #f59e0b; }
-    :global(.tick-info)   { color: var(--muted); }
-
-    @keyframes tick-in {
-      from { opacity: 0; transform: translateY(4px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    /* ── Footer ── */
-    .footer {
-      margin-top: 1.5rem;
-      margin-bottom: 1.5rem;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    .line {
-      margin-top: 2.5rem;
-      margin-bottom: 2.5rem;
-      border: none;
-      background: none;
-    }
-  </style>
-</head>
-
-<body>
-  <div class="container">
-
-    <div class="logo">// Decompiled</div>
-
-    <h1>Understanding systems by taking them apart.</h1>
-
-    <div class="tagline">
-      Deep dives into codebases, research papers, and the fundamentals behind them.
+  <!-- AST HERO -->
+  <section class="hero">
+    <canvas id="astCanvas" class="ast-canvas"></canvas>
+    <div class="hero__content">
+      <p class="hero__tag">// decompiled</p>
+      <h1 class="hero__title">
+        Taking things apart<br/>
+        <span class="accent">to see how they work.</span>
+      </h1>
+      <p class="hero__desc">
+        Deep technical writing on open source codebases, research papers,
+        and CS fundamentals. No black boxes.
+      </p>
+      <div class="hero__btns">
+        <a href="/source" class="btn btn--primary">Read the source</a>
+        <a href="/notes" class="btn btn--ghost">Notes →</a>
+      </div>
     </div>
-    
-    <div class="status">
-      status: building  
+    <div class="hero__scroll">
+      <span class="hero__scroll-text">scroll</span>
+      <div class="hero__scroll-line"></div>
     </div>
-    
-    <!-- <div class="footer">coming soon.</div> -->
+  </section>
 
-    <hr class="line">
-    
-    <div class="alloc-wrap">
-
-      <div class="alloc-header">
-        <span class="alloc-title">// heap — live allocator</span>
-        <div class="alloc-legend">
-          <div class="legend-item">
-            <div class="legend-dot" style="background:#3b82f6"></div>
-            allocated
-          </div>
-          <div class="legend-item">
-            <div class="legend-dot" style="background:#6b7280"></div>
-            header
-          </div>
-          <div class="legend-item">
-            <div class="legend-dot" style="background:#162b42"></div>
-            free
-          </div>
-        </div>
+  <!-- SPLIT SCREEN -->
+  <section class="split" id="split">
+    <div class="split__left">
+      <div class="split__left-inner">
+        <p class="split__label">// input — raw binary</p>
+        <div class="split__hex" id="splitHex"></div>
+        <div class="split__hex-fade"></div>
       </div>
-
-      <div class="alloc-canvas-wrap" id="allocWrap">
-        <canvas id="allocCanvas"></canvas>
-      </div>
-
-      <div class="alloc-stats">
-        <div>
-          <div class="stat__label">used</div>
-          <div class="stat__val" id="statUsed">0 B</div>
-        </div>
-        <div>
-          <div class="stat__label">free</div>
-          <div class="stat__val" id="statFree">0 B</div>
-        </div>
-        <div>
-          <div class="stat__label">fragments</div>
-          <div class="stat__val" id="statFrags">0</div>
-        </div>
-        <div>
-          <div class="stat__label">allocs</div>
-          <div class="stat__val" id="statAllocs">0</div>
-        </div>
-        <div>
-          <div class="stat__label">frees</div>
-          <div class="stat__val" id="statFrees">0</div>
-        </div>
-      </div>
-
-      <div class="alloc-ticker" id="allocTicker"><span>&nbsp;</span></div>
-
     </div>
 
+    <div class="split__divider">
+      <div class="split__divider-label">decompile()</div>
+    </div>
 
-  </div>
-</body>
+    <div class="split__right">
+      <div class="split__right-inner">
+        <p class="split__label accent">// output — understood</p>
+
+        <div class="split__step" data-step="0">
+          <div class="split__step-label">tokens</div>
+          <div class="split__tokens" id="splitTokens"></div>
+        </div>
+
+        <div class="split__step" data-step="1">
+          <div class="split__step-label">structure</div>
+          <div class="split__code">
+            <div class="split__code-comment">// update_curr — the heart of CFS</div>
+            <div class="split__code-line"><span class="tk">static</span> <span class="tf">void</span> <span class="tv"> update_curr</span><span class="tp">(struct cfs_rq *cfs_rq) {'{'}</span></div>
+            <div class="split__code-line"><span class="tf">  u64</span><span class="tv"> delta</span><span class="tp"> = now - curr->exec_start;</span></div>
+            <div class="split__code-line"><span class="tv">  curr</span><span class="tp">->vruntime += </span><span class="tv">calc_delta_fair</span><span class="tp">(delta, curr);</span></div>
+            <div class="split__code-comment">  // fairness invariant — least served runs next</div>
+            <div class="split__code-line"><span class="tp">{'}'}</span></div>
+          </div>
+        </div>
+
+        <div class="split__step" data-step="2">
+          <div class="split__step-label">understanding</div>
+          <div class="split__annotation">
+            <div class="split__annotation-item">
+              <span class="split__annotation-key">what</span>
+              <span class="split__annotation-val">Tracks CPU time each process has received, weighted by priority</span>
+            </div>
+            <div class="split__annotation-item">
+              <span class="split__annotation-key">why</span>
+              <span class="split__annotation-val">The process with smallest vruntime always runs next — fairness by design</span>
+            </div>
+            <div class="split__annotation-item">
+              <span class="split__annotation-key">invariant</span>
+              <span class="split__annotation-val">vruntime only ever increases — the ratchet that makes CFS work</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="split__caption">
+          We read the source so you understand it.<br/>
+          Every function, every invariant, explained.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- POSTS -->
+  <section class="posts-section">
+    <div class="container--wide">
+
+      {source.length > 0 && (
+        <div class="posts-group">
+          <div class="posts-group__header">
+            <p class="section-label">Latest from source</p>
+            <a href="/source" class="posts-group__all">All source →</a>
+          </div>
+          <div class="post-grid">
+            {source.map(post => (
+              <a href={`/source/${post.id}`} class="post-card">
+                <div>
+                  <div class="post-card__title">{post.data.title}</div>
+                  {post.data.description && <div class="post-card__desc">{post.data.description}</div>}
+                  {post.data.tags && (
+                    <div class="post-card__tags">
+                      {post.data.tags.map(tag => <span class="tag">{tag}</span>)}
+                    </div>
+                  )}
+                </div>
+                <div class="post-card__meta">
+                  <div>{formatDate(post.data.date)}</div>
+                  {post.data.readingTime && <div>{post.data.readingTime} min</div>}
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {notes.length > 0 && (
+        <div class="posts-group" style="margin-top:4rem;">
+          <div class="posts-group__header">
+            <p class="section-label">Latest from notes</p>
+            <a href="/notes" class="posts-group__all">All notes →</a>
+          </div>
+          <div class="post-grid">
+            {notes.map(post => (
+              <a href={`/notes/${post.id}`} class="post-card">
+                <div>
+                  <div class="post-card__title">{post.data.title}</div>
+                  {post.data.description && <div class="post-card__desc">{post.data.description}</div>}
+                  {post.data.tags && (
+                    <div class="post-card__tags">
+                      {post.data.tags.map(tag => <span class="tag">{tag}</span>)}
+                    </div>
+                  )}
+                </div>
+                <div class="post-card__meta">
+                  <div>{formatDate(post.data.date)}</div>
+                  {post.data.readingTime && <div>{post.data.readingTime} min</div>}
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {source.length === 0 && notes.length === 0 && (
+        <div class="empty-state">
+          <p class="empty-state__text">// no posts yet</p>
+        </div>
+      )}
+
+    </div>
+  </section>
+
+</Base>
+
+<style>
+/* ── Hero ── */
+.hero {
+  position: relative; min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; overflow: hidden; background: #070a0f;
+}
+.ast-canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0;
+}
+.hero__content {
+  position: relative; z-index: 2; max-width: 640px; padding: 2rem;
+  background: radial-gradient(ellipse 80% 70% at 50% 50%, rgba(7,10,15,0.82) 30%, transparent 100%);
+  border-radius: 50%;
+}
+.hero__tag {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 1.5rem; opacity: 0.7;
+}
+.hero__title {
+  font-family: var(--mono); font-size: clamp(2.4rem, 5vw, 4rem);
+  color: var(--heading); line-height: 1.05; letter-spacing: -0.04em; margin-bottom: 1.25rem;
+}
+.hero__title .accent { color: var(--accent); }
+.hero__desc { color: var(--text-dim); font-size: 1rem; line-height: 1.7; margin-bottom: 2rem; }
+.hero__btns { display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap; }
+.btn--primary {
+  font-family: var(--mono); font-size: 0.75rem; text-transform: uppercase;
+  letter-spacing: 0.1em; padding: 0.65rem 1.25rem; border-radius: 3px;
+  text-decoration: none; transition: 0.2s;
+  background: var(--accent); color: #070a0f; border: 1px solid var(--accent);
+}
+.btn--primary:hover { background: transparent; color: var(--accent); opacity: 1; }
+.hero__scroll {
+  position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem; z-index: 2;
+  animation: scroll-fade 1s ease 3s both;
+}
+@keyframes scroll-fade {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.hero__scroll-text {
+  font-family: var(--mono); font-size: 0.62rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.2em; opacity: 0.4;
+}
+.hero__scroll-line {
+  width: 1px; height: 40px;
+  background: linear-gradient(to bottom, var(--text-dim), transparent);
+  opacity: 0.3; animation: scroll-line 2s ease-in-out 4s infinite;
+}
+@keyframes scroll-line {
+  0%   { transform: scaleY(0); transform-origin: top; }
+  50%  { transform: scaleY(1); transform-origin: top; }
+  51%  { transform: scaleY(1); transform-origin: bottom; }
+  100% { transform: scaleY(0); transform-origin: bottom; }
+}
+
+/* ── Split ── */
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  min-height: 100vh;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.split__left {
+  background: #06080d; position: relative; overflow: hidden;
+}
+.split__left-inner {
+  padding: 4rem 3rem; position: relative; height: 100%;
+}
+.split__hex-fade {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 220px;
+  background: linear-gradient(to bottom, transparent, #06080d);
+  pointer-events: none;
+}
+.split__right { background: var(--bg); overflow: hidden; }
+.split__right-inner {
+  padding: 4rem 3rem;
+  display: flex; flex-direction: column; gap: 2.5rem; height: 100%;
+}
+.split__label {
+  font-family: var(--mono); font-size: 0.65rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 2rem; opacity: 0.5;
+}
+.split__label.accent { color: var(--accent); opacity: 0.7; }
+.split__hex {
+  font-family: var(--mono); font-size: 0.68rem; line-height: 1.85;
+  color: #1e3050; overflow: hidden;
+}
+.split__hex .addr { color: #141c28; margin-right: 0.75rem; }
+.split__hex .hot  { color: var(--accent); opacity: 0.4; }
+.split__divider {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(to bottom, transparent 0%, var(--accent) 50%, transparent 100%);
+  box-shadow: 0 0 30px rgba(0,200,255,0.15);
+}
+.split__divider-label {
+  font-family: var(--mono); font-size: 0.62rem; color: var(--accent);
+  writing-mode: vertical-rl; letter-spacing: 0.15em; padding: 1rem 0;
+  white-space: nowrap; text-shadow: 0 0 12px var(--accent);
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 3px;
+}
+
+/* Steps */
+.split__step {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.split__step.visible { opacity: 1; transform: translateY(0); }
+.split__step:nth-child(2) { transition-delay: 0.15s; }
+.split__step:nth-child(3) { transition-delay: 0.3s; }
+.split__step-label {
+  font-family: var(--mono); font-size: 0.65rem; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 0.75rem;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.split__step-label::before {
+  content: ''; display: block; width: 12px; height: 1px;
+  background: var(--accent); opacity: 0.5;
+}
+
+/* Tokens */
+.split__tokens { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.split__token {
+  font-family: var(--mono); font-size: 0.68rem;
+  padding: 0.2rem 0.5rem; border-radius: 3px; border: 1px solid;
+}
+.split__token--keyword { color: #c792ea; border-color: #c792ea44; background: #c792ea11; }
+.split__token--type    { color: #82aaff; border-color: #82aaff44; background: #82aaff11; }
+.split__token--ident   { color: #eeffff; border-color: #eeffff22; background: #eeffff08; }
+.split__token--punct   { color: var(--text-dim); border-color: var(--border); }
+.split__token--number  { color: #f78c6c; border-color: #f78c6c44; background: #f78c6c11; }
+
+/* Code */
+.split__code {
+  font-family: var(--mono); font-size: 0.82rem; line-height: 1.85;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; padding: 1.25rem;
+}
+.tk { color: #c792ea; } .tf { color: #82aaff; }
+.tv { color: #eeffff; } .tp { color: var(--text-dim); }
+.split__code-comment { color: #3a5a6a; font-style: italic; display: block; }
+.split__code-line { display: block; }
+
+/* Annotations */
+.split__annotation {
+  border: 1px solid var(--border); border-radius: 4px; overflow: hidden;
+}
+.split__annotation-item {
+  display: grid; grid-template-columns: 80px 1fr;
+  border-bottom: 1px solid var(--border);
+}
+.split__annotation-item:last-child { border-bottom: none; }
+.split__annotation-key {
+  font-family: var(--mono); font-size: 0.68rem; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 0.9rem 1rem; background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; align-items: center;
+}
+.split__annotation-val {
+  padding: 0.9rem 1rem; color: var(--text);
+  line-height: 1.5; font-size: 0.85rem;
+}
+.split__caption {
+  font-size: 0.875rem; color: var(--text-dim); line-height: 1.7;
+  font-style: italic; margin-top: auto;
+  padding-top: 1rem; border-top: 1px solid var(--border);
+}
+
+/* ── Posts ── */
+.posts-section { padding: 5rem 0 8rem; }
+.posts-group__header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;
+}
+.posts-group__all {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim);
+  text-decoration: none; transition: color 0.2s;
+}
+.posts-group__all:hover { color: var(--accent); }
+.empty-state {
+  padding: 3rem; border: 1px solid var(--border); border-radius: 4px; text-align: center;
+}
+.empty-state__text { font-family: var(--mono); font-size: 0.8rem; color: var(--text-dim); margin: 0; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .split { grid-template-columns: 1fr; min-height: unset; }
+  .split__left-inner, .split__right-inner { padding: 2.5rem 1.5rem; }
+  .split__divider {
+    width: 100%; height: 1px; flex-direction: row;
+    background: linear-gradient(to right, transparent, var(--accent), transparent);
+  }
+  .split__divider-label { writing-mode: horizontal-tb; padding: 0 1rem; }
+}
+</style>
 
 <script>
-(function () {
+// ══════════════════════════════════════
+// AST CANVAS — organic, asymmetric
+// ══════════════════════════════════════
+const canvas = document.getElementById('astCanvas');
+if (canvas) {
+  const ctx = canvas.getContext('2d');
+  let W, H, nodes = [], edges = [], t = 0;
+  const LABELS = ['Program','FuncDecl','BlockStmt','ExprStmt','CallExpr','BinaryExpr',
+    'Identifier','Literal','ReturnStmt','IfStmt','ForStmt','VarDecl','AssignExpr',
+    'MemberExpr','UnaryExpr','ArrayExpr','ArrowFunc','ImportDecl','Param','Type'];
 
-  const HEAP  = 256;
-  const HDR   = 2;
-  const MIN   = 4;
-  const MAX   = 36;
-  const TICK  = 1200;
-
-  const COLORS = [
-    '#3b82f6','#60a5fa','#93c5fd',
-    '#2563eb','#7dd3fc','#38bdf8',
-    '#1d4ed8','#0ea5e9',
-  ];
-
-  let cells        = [];
-  let blocks       = [];
-  let blockCounter = 0;
-  let colorIdx     = 0;
-  let totalAllocs  = 0;
-  let totalFrees   = 0;
-  let phase        = 'filling';
-  let phaseTimer   = 0;
-
-  function initHeap() {
-    cells        = Array.from({ length: HEAP }, () => ({ type: 'free', color: null }));
-    blocks       = [];
-    blockCounter = 0;
-    colorIdx     = 0;
-    totalAllocs  = 0;
-    totalFrees   = 0;
+  // Simple seeded RNG for reproducible but organic layouts
+  let seed = 42;
+  function rng() {
+    seed = (seed * 1664525 + 1013904223) & 0xffffffff;
+    return (seed >>> 0) / 0xffffffff;
   }
 
-  function firstFit(size) {
-    const need = size + HDR;
-    let run = 0, start = -1;
-    for (let i = 0; i < HEAP; i++) {
-      if (cells[i].type === 'free') {
-        if (run === 0) start = i;
-        if (++run >= need) return start;
-      } else { run = 0; start = -1; }
+  function build() {
+    seed = Math.floor(Date.now() / 30000);
+    nodes = []; edges = [];
+    const cx = W/2, cy = H/2;
+    nodes.push({ id:0, x:cx, y:cy, label:'Program', r:26, born:0, depth:0 });
+
+    let id = 1;
+    const q = [{ pid:0, x:cx, y:cy, depth:1, parentAngle: -Math.PI/2 }];
+
+    while (q.length && id < 52) {
+      const { pid, x, y, depth, parentAngle } = q.shift();
+      if (depth > 6) continue;
+
+      // Uneven child counts — some nodes very branchy, others linear
+      const roll = Math.random();
+      const childCount = depth === 1
+        ? 3 + Math.floor(Math.random() * 4)        // root: 3–6 children
+        : roll < 0.15 ? 0                   // 15% chance: leaf
+        : roll < 0.45 ? 1                   // 30%: single child
+        : roll < 0.75 ? 2                   // 30%: two children
+        : 3;                                // 25%: three children
+
+      for (let i = 0; i < childCount && id < 52; i++) {
+        // Angle: bias away from parent but with heavy randomness
+        // This breaks the radial symmetry — branches go in unexpected directions
+        const wobble = (Math.random() - 0.5) * Math.PI * 1.4;
+        const spread = Math.random() * Math.PI * 0.9;
+        const angle = parentAngle + Math.PI + wobble + (i - childCount/2) * spread;
+
+        // Distance: very varied — creates uneven, organic branch lengths
+        const dist = 60 + Math.random() * 110 + (6 - depth) * 15;
+
+        const nx = x + Math.cos(angle) * dist;
+        const ny = y + Math.sin(angle) * dist;
+
+        // Node size: leaf nodes are tiny dots
+        const isLeaf = childCount === 0 || (depth > 3 && Math.random() > 0.5);
+        const r = isLeaf ? 4 + Math.random() * 3 : Math.max(8, 23 - depth * 2.5 + (Math.random()-0.5)*5);
+
+        // Reject: too close to edge or too close to centre
+        const dCentre = Math.sqrt((nx-cx)**2 + (ny-cy)**2);
+        const minC = Math.min(W,H) * 0.13;
+        if (nx < 24 || nx > W-24 || ny < 24 || ny > H-24 || dCentre < minC) {
+          id++; continue;
+        }
+
+        // Uneven birth delays — some branches grow fast, others slowly
+        const bornDelay = id * (40 + Math.floor(Math.random() * 70));
+
+        nodes.push({ id, x:nx, y:ny, label:LABELS[id % LABELS.length], r, born:bornDelay, depth, isLeaf });
+        edges.push({ from:pid, to:id, born:bornDelay });
+        q.push({ pid:id, x:nx, y:ny, depth:depth+1, parentAngle:angle });
+        id++;
+      }
     }
-    return -1;
   }
 
-  function malloc(size) {
-    const start = firstFit(size);
-    if (start < 0) return null;
-    const id    = blockCounter++;
-    const color = COLORS[colorIdx++ % COLORS.length];
-    for (let i = start; i < start + HDR; i++)
-      cells[i] = { type: 'header', color: '#6b7280', blockId: id };
-    for (let i = start + HDR; i < start + HDR + size; i++)
-      cells[i] = { type: 'data', color, blockId: id };
-    const b = { id, start, size, color, freed: false };
-    blocks.push(b);
-    totalAllocs++;
-    return b;
-  }
-
-  function freeFn(block) {
-    if (block.freed) return;
-    block.freed = true;
-    totalFrees++;
-    for (let i = block.start; i < block.start + HDR + block.size; i++)
-      cells[i] = { type: 'free', color: null };
-    blocks = blocks.filter(b => b.id !== block.id);
-  }
-
-  function getStats() {
-    let used = 0, free = 0, frags = 0;
-    let inFree = false;
-    cells.forEach(c => {
-      if (c.type === 'free') { free++; if (!inFree) { frags++; inFree = true; } }
-      else { used++; inFree = false; }
-    });
-    return { used, free, frags };
-  }
-
-  // ── Canvas setup ──
-  const wrap   = document.getElementById('allocWrap');
-  const canvas = document.getElementById('allocCanvas');
-  const ctx    = canvas.getContext('2d');
-  const DPR    = Math.min(window.devicePixelRatio || 1, 2);
-
-  let COLS = 32, PX = 8;
-  let flashes = [];
-
-  function flash(startIdx, len) {
-    const set = new Set();
-    for (let i = startIdx; i < Math.min(startIdx + HDR + len, HEAP); i++) set.add(i);
-    const f = { set, alpha: 0.65 };
-    flashes.push(f);
-    function fade() {
-      f.alpha -= 0.05;
-      if (f.alpha <= 0) { flashes = flashes.filter(x => x !== f); return; }
-      requestAnimationFrame(fade);
-    }
-    requestAnimationFrame(fade);
-  }
-
-  function layout() {
-    // Use clientWidth — this is the inner width after border, safe on mobile
-    const W = wrap.clientWidth;
-    if (!W) return;
-
-    // Choose cell pixel size: target ~8px, clamp 5–10
-    PX   = Math.max(5, Math.min(10, Math.floor(W / 32)));
-    COLS = Math.floor(W / PX);
-    const ROWS = Math.ceil(HEAP / COLS);
-    const H    = ROWS * PX;
-
-    // CSS size — never wider than the wrapper
-    canvas.style.width  = W + 'px';
-    canvas.style.height = H + 'px';
-
-    // Backing-store size (HiDPI)
-    canvas.width  = Math.round(W * DPR);
-    canvas.height = Math.round(H * DPR);
-
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(DPR, DPR);
+  function getAlpha(x, y, born, ms) {
+    if (ms < born) return 0;
+    const age = Math.min(1, (ms - born) / 600);
+    const dist = Math.sqrt((x-W/2)**2 + (y-H/2)**2);
+    const maxD = Math.sqrt(W*W+H*H) / 2;
+    const fade = Math.max(0, Math.min(1, (dist - maxD*0.14) / (maxD*0.22)));
+    return age * fade * 0.7;
   }
 
   function draw() {
-    const W = canvas.clientWidth;
-    const H = canvas.clientHeight;
-    if (!W || !COLS) return;
-
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#0d2340';
-    ctx.fillRect(0, 0, W, H);
+    const ms = t * 16;
 
-    const gap = PX >= 7 ? 1 : 0;
-    const sz  = PX - gap;
-
-    for (let i = 0; i < HEAP; i++) {
-      const col = i % COLS;
-      const row = Math.floor(i / COLS);
-      const x   = col * PX + gap;
-      const y   = row * PX + gap;
-      const c   = cells[i];
-      ctx.fillStyle =
-        c.type === 'free'   ? '#162b42' :
-        c.type === 'header' ? '#6b7280' :
-        c.color;
-      ctx.fillRect(x, y, sz, sz);
-    }
-
-    flashes.forEach(f => {
-      if (f.alpha <= 0) return;
-      ctx.fillStyle = `rgba(255,255,255,${f.alpha * 0.4})`;
-      f.set.forEach(i => {
-        const col = i % COLS, row = Math.floor(i / COLS);
-        ctx.fillRect(col * PX + gap, row * PX + gap, sz, sz);
-      });
+    edges.forEach(e => {
+      const f = nodes.find(n => n.id === e.from);
+      const to = nodes.find(n => n.id === e.to);
+      if (!f || !to) return;
+      const a = getAlpha((f.x+to.x)/2, (f.y+to.y)/2, e.born, ms);
+      if (a <= 0) return;
+      ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(to.x, to.y);
+      ctx.strokeStyle = `rgba(0,200,255,${a*0.3})`; ctx.lineWidth = 1; ctx.stroke();
     });
-  }
 
-  function renderLoop() { draw(); requestAnimationFrame(renderLoop); }
-
-  function setTicker(msg, kind = 'info') {
-    const cls =
-      kind === 'malloc' ? 'tick-malloc' :
-      kind === 'free'   ? 'tick-free'   :
-                          'tick-info';
-    document.getElementById('allocTicker').innerHTML = `<span class="${cls}">${msg}</span>`;
-  }
-
-  function updateStats() {
-    const s = getStats();
-    document.getElementById('statUsed').textContent   = s.used  + ' B';
-    document.getElementById('statFree').textContent   = s.free  + ' B';
-    document.getElementById('statFrags').textContent  = s.frags;
-    document.getElementById('statAllocs').textContent = totalAllocs;
-    document.getElementById('statFrees').textContent  = totalFrees;
-  }
-
-  function tick() {
-    phaseTimer++;
-
-    if (phase === 'filling') {
-      const size = Math.floor(Math.random() * (MAX - MIN) + MIN);
-      const b = malloc(size);
-      if (b) {
-        flash(b.start, b.size);
-        setTicker(`malloc(${size})  →  0x${b.start.toString(16).padStart(3,'0')}`, 'malloc');
-      } else {
-        phase = 'fragmenting'; phaseTimer = 0;
-        setTicker('heap full — freeing blocks', 'info');
+    nodes.forEach(n => {
+      const a = getAlpha(n.x, n.y, n.born, ms);
+      if (a <= 0) return;
+      if (!n.isLeaf && n.depth <= 2) {
+        const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r*2.5);
+        g.addColorStop(0, `rgba(0,200,255,${a*0.1})`); g.addColorStop(1, 'transparent');
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r*2.5, 0, Math.PI*2); ctx.fillStyle=g; ctx.fill();
       }
-      if (phaseTimer >= 12) { phase = 'fragmenting'; phaseTimer = 0; }
-
-    } else if (phase === 'fragmenting') {
-      const live = blocks.filter(b => !b.freed);
-      if (!live.length) { phase = 'compacting'; phaseTimer = 0; return; }
-      const b = live[Math.floor(Math.random() * live.length)];
-      const addr = b.start;
-      freeFn(b);
-      flash(addr, b.size);
-      setTicker(`free(0x${addr.toString(16).padStart(3,'0')})  →  ${b.size} B reclaimed`, 'free');
-      if (phaseTimer >= 9) { phase = 'compacting'; phaseTimer = 0; }
-
-    } else {
-      const live = blocks.filter(b => !b.freed);
-      if (live.length) {
-        const b = live[0];
-        const addr = b.start;
-        freeFn(b);
-        flash(addr, b.size);
-        setTicker(`free(0x${addr.toString(16).padStart(3,'0')})  →  coalescing`, 'free');
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+      if (n.isLeaf) {
+        ctx.fillStyle = `rgba(0,200,255,${a*0.35})`; ctx.fill();
       } else {
-        initHeap();
-        phase = 'filling'; phaseTimer = 0;
-        setTicker('heap reset — new cycle', 'info');
+        ctx.fillStyle = `rgba(7,10,15,${a*0.9})`; ctx.fill();
+        ctx.strokeStyle = n.depth===0 ? `rgba(0,200,255,${a})` : `rgba(0,200,255,${a*(0.6-n.depth*0.07)})`;
+        ctx.lineWidth = n.depth===0 ? 2 : 1; ctx.stroke();
       }
+      if (!n.isLeaf && n.r > 10) {
+        const s = n.label.replace('Statement','').replace('Stmt','')
+          .replace('Expression','').replace('Expr','')
+          .replace('Declaration','').replace('Decl','');
+        ctx.font = `${Math.max(6.5, n.r*0.46)}px 'Space Mono',monospace`;
+        ctx.fillStyle = n.depth===0 ? `rgba(0,200,255,${a})` : `rgba(100,160,190,${a*0.8})`;
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(s, n.x, n.y);
+      }
+    });
+
+    t++;
+    if (t > 800) { t = 0; build(); }
+    requestAnimationFrame(draw);
+  }
+
+  function resize() {
+    W = canvas.width = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+    build();
+  }
+  window.addEventListener('resize', resize);
+  resize(); draw();
+}
+
+// ══════════════════════════════════════
+// SPLIT — hex dump with flickering bytes
+// ══════════════════════════════════════
+const hexEl = document.getElementById('splitHex');
+if (hexEl) {
+  const elf = ['7f','45','4c','46','02','01','01','00','00','00','00','00','00','00','00','00'];
+  let html = '';
+  for (let r = 0; r < 28; r++) {
+    const addr = (r * 16).toString(16).padStart(8,'0');
+    let b = '', a = '';
+    for (let i = 0; i < 16; i++) {
+      const isElf = r === 0;
+      const val = isElf ? parseInt(elf[i],16) : Math.floor(Math.random()*256);
+      const hex = val.toString(16).padStart(2,'0');
+      const hot = isElf || (r < 3 && Math.random() < 0.1);
+      b += hot ? `<span class="hot">${hex}</span> ` : `<span>${hex}</span> `;
+      a += val >= 32 && val < 127 ? String.fromCharCode(val) : '.';
     }
-
-    updateStats();
+    html += `<div style="display:flex;gap:.75rem;line-height:1.85">
+      <span class="addr">${addr}</span>
+      <span style="flex:1;letter-spacing:.04em">${b}</span>
+      <span style="color:#0d1624;min-width:110px">${a}</span>
+    </div>`;
   }
+  hexEl.innerHTML = html;
 
-  // ── Boot ──
-  initHeap();
+  // Randomly flicker individual bytes
+  setInterval(() => {
+    const spans = hexEl.querySelectorAll('span:not(.addr):not(.hot)');
+    if (!spans.length) return;
+    const pick = spans[Math.floor(Math.random() * spans.length)];
+    const orig = pick.textContent;
+    pick.style.color = 'rgba(0,200,255,0.3)';
+    pick.textContent = Math.floor(Math.random()*256).toString(16).padStart(2,'0');
+    setTimeout(() => { pick.style.color = ''; pick.textContent = orig; }, 120);
+  }, 90);
+}
 
-  // Wait one frame so the DOM has rendered and clientWidth is accurate
-  requestAnimationFrame(() => {
-    layout();
-    updateStats();
-    renderLoop();
-    setTimeout(() => setInterval(tick, TICK), 800);
-  });
+// ══════════════════════════════════════
+// SPLIT — token stream
+// ══════════════════════════════════════
+const tokensEl = document.getElementById('splitTokens');
+if (tokensEl) {
+  const tokens = [
+    {t:'static',k:'keyword'},{t:'void',k:'type'},{t:'update_curr',k:'ident'},
+    {t:'(',k:'punct'},{t:'struct',k:'keyword'},{t:'cfs_rq',k:'type'},
+    {t:'*cfs_rq',k:'ident'},{t:')',k:'punct'},{t:'{',k:'punct'},
+    {t:'u64',k:'type'},{t:'delta',k:'ident'},{t:'=',k:'punct'},
+    {t:'now',k:'ident'},{t:'-',k:'punct'},{t:'curr',k:'ident'},
+    {t:'->',k:'punct'},{t:'exec_start',k:'ident'},{t:';',k:'punct'},
+    {t:'curr',k:'ident'},{t:'->',k:'punct'},{t:'vruntime',k:'ident'},
+    {t:'+=',k:'punct'},{t:'calc_delta_fair',k:'ident'},{t:'(',k:'punct'},
+    {t:'delta',k:'ident'},{t:'curr',k:'ident'},{t:')',k:'punct'},
+    {t:';',k:'punct'},{t:'}',k:'punct'},
+  ];
+  tokensEl.innerHTML = tokens.map(tk =>
+    `<span class="split__token split__token--${tk.k}">${tk.t}</span>`
+  ).join('');
+}
 
-  let resizeTimer;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(layout, 80);
-  });
-
-})();
+// ══════════════════════════════════════
+// SCROLL TRIGGER — reveal right steps
+// ══════════════════════════════════════
+const split = document.getElementById('split');
+if (split) {
+  const steps = split.querySelectorAll('.split__step');
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        steps.forEach((s, i) => setTimeout(() => s.classList.add('visible'), i * 200));
+        io.disconnect();
+      }
+    });
+  }, { threshold: 0.2 });
+  io.observe(split);
+}
 </script>
-</html>
